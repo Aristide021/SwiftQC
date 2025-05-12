@@ -1,0 +1,14 @@
+
+.DS_Store
+.build/
+.swiftpm/
+.vscode/
+.xcodeproj
+
+*.txt
+
+# Ignore all hidden folders
+.*/
+
+# Except for .github
+!.github/
