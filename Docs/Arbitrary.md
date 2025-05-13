@@ -1,240 +1,250 @@
 # Arbitrary Protocol
 
-The `Arbitrary` protocol is a core concept in SwiftQC that connects types to their generators and shrinkers. It provides a standardized way for types to define how random values should be generated and shrunk during property testing.
+The `Arbitrary` protocol is a cornerstone of SwiftQC. It provides a standardized way for types to define how random instances should be **generated** and how failing test cases involving these instances should be **shrunk** to find minimal counterexamples. This allows SwiftQC's `forAll` runner to seamlessly work with any conforming type.
 
 ## Protocol Definition
 
+The `Arbitrary` protocol is simple yet powerful:
+
 ```swift
 public protocol Arbitrary: Sendable {
+    /// The specific type of value that will be generated and shrunk.
+    /// This type must also be `Sendable`.
     associatedtype Value: Sendable
     
-    /// The generator used to create random values of this type
-    static var gen: Gen<Value> { get }
+    /// A `Gen<Value>` (from the `swift-gen` library) that produces
+    /// random instances of `Self.Value`.
+    static var gen: Gen<Self.Value> { get }
     
-    /// The shrinker used to find smaller counterexamples of this type
-    static var shrinker: any Shrinker<Value> { get }
+    /// An `any Shrinker<Self.Value>` that provides a strategy for
+    /// creating "smaller" or simpler instances of `Self.Value`
+    /// from a failing one.
+    static var shrinker: any Shrinker<Self.Value> { get }
 }
 ```
 
-The protocol has three key requirements:
-1. An associated `Value` type that must be `Sendable`
-2. A static `gen` property that returns a generator for values of this type
-3. A static `shrinker` property that returns a shrinker for values of this type
+**Key Requirements:**
 
-## Built-in Arbitrary Types
+1.  **`Sendable` Conformance:** The `Arbitrary` type itself must be `Sendable`.
+2.  **`associatedtype Value: Sendable`:** The actual values generated and shrunk must be `Sendable`.
+3.  **`static var gen: Gen<Self.Value>`:** A static generator for the associated `Value` type.
+4.  **`static var shrinker: any Shrinker<Self.Value>`:** A static, type-erased shrinker for the associated `Value` type.
 
-SwiftQC provides `Arbitrary` conformance for many standard Swift types:
+## Built-in Arbitrary Conformances
 
-### Primitive Types
-- `Int`, `Int8`, `Int16`, `Int32`, `Int64`
-- `UInt`, `UInt8`, `UInt16`, `UInt32`, `UInt64`
-- `Float`, `Double`, `CGFloat`
-- `Bool`
-- `Character`, `Unicode.Scalar`
-- `String`
-- `Decimal`
-- `UUID`
-- `Date` (with reasonable date ranges)
+SwiftQC provides `Arbitrary` conformances for a wide range of standard Swift and Foundation types out-of-the-box, making it easy to start writing property tests immediately:
 
-### Collection Types
-- `Array<T>` where `T: Arbitrary`
-- `Dictionary<K, V>` (via `ArbitraryDictionary<K, V>` wrapper)
-- `Set<T>` where `T: Arbitrary & Hashable`
-- `Optional<T>` where `T: Arbitrary`
-- `Result<Success, Failure>` where both `Success` and `Failure` are `Arbitrary`
+*   **Numeric Types:**
+    *   Integers: `Int`, `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`.
+        *(Note: `UInt` currently does not have a direct conformance; use a fixed-width unsigned integer like `UInt64` instead.)*
+    *   Floating-Point: `Float`, `Double`.
+    *   Platform-Specific: `CGFloat` (where available).
+    *   Special: `Decimal`.
+*   **Textual Types:**
+    *   `String`
+    *   `Character`
+    *   `Unicode.Scalar`
+*   **Boolean Type:**
+    *   `Bool`
+*   **Opaque/Identifier Types:**
+    *   `UUID`
+    *   `Data`
+*   **Date & Time:**
+    *   `Date` (generates dates within a reasonable range around the present).
+    *   `DateComponents` (generates with optional, plausible component values).
+*   **Standard Collections & Structures:**
+    *   `Array<Element>` (where `Element: Arbitrary`)
+    *   `ContiguousArray<Element>` (where `Element: Arbitrary` and `Element.Value: Hashable` for the default shrinker)
+    *   `Set<Element>` (where `Element: Arbitrary` and `Element.Value: Hashable`)
+    *   `Dictionary<Key, Value>` (provided via the `ArbitraryDictionary<KeyArbitraryType, ValueArbitraryType>` wrapper, where `KeyArbitraryType: Arbitrary`, `KeyArbitraryType.Value: Hashable`, and `ValueArbitraryType: Arbitrary`).
+    *   `Optional<Wrapped>` (where `Wrapped: Arbitrary`)
+    *   `Result<Success, Failure>` (where `Success: Arbitrary`, `Failure: Arbitrary`, and `Failure.Value: Error`)
+    *   `Range<Bound>` (where `Bound: Arbitrary`, `Bound.Value: Comparable & Hashable & Strideable`, and `Bound.Value.Stride: SignedInteger`)
+    *   `ClosedRange<Bound>` (where `Bound: Arbitrary`, `Bound.Value: Comparable & Hashable & Strideable`, and `Bound.Value.Stride: SignedInteger`)
+    *   Tuples (up to 5 elements, e.g., `(T1, T2)`, provided via `Tuple2<T1, T2>` wrapper where `T1, T2: Arbitrary`)
+*   **Other:**
+    *   `Void` (or `()`, provided via `VoidWrapper`).
 
-## Conforming Custom Types to Arbitrary
+## Conforming Your Custom Types
 
-There are several ways to make your types conform to `Arbitrary`:
+Making your own types `Arbitrary` is straightforward. Here are common patterns:
 
-### 1. Basic Conformance
+### 1. Simple Structs (Composed of Arbitrary Types)
 
-For simple types, implement the required properties:
+If your struct is composed of fields that are already `Arbitrary`:
 
 ```swift
-struct Point: Arbitrary, Sendable {
+import SwiftQC
+import Gen // For zip and other Gen combinators
+
+struct Point: Sendable, Equatable { // Equatable often useful for testing
     let x: Int
     let y: Int
-    
-    typealias Value = Point
-    
+}
+
+extension Point: Arbitrary {
+    typealias Value = Point // Self.Value is Point
+
     static var gen: Gen<Point> {
-        zip(Int.gen, Int.gen).map { x, y in
-            Point(x: x, y: y)
+        // Zip the generators of the components and map to the initializer
+        zip(Int.gen, Int.gen).map { xCoord, yCoord in
+            Point(x: xCoord, y: yCoord)
         }
+        // Shorter: zip(Int.gen, Int.gen).map(Point.init)
     }
-    
+
     static var shrinker: any Shrinker<Point> {
-        Shrinkers.map(
-            from: Shrinkers.tuple(Int.shrinker, Int.shrinker),
-            to: { Point(x: $0.0, y: $0.1) },
-            from: { ($0.x, $0.y) }
+        // Use a tuple shrinker for the components and map back to Point
+        // Assuming PairShrinker exists and is accessible, e.g., via Shrinkers.pair
+        PairShrinker(Int.shrinker, Int.shrinker).map(
+            into: Point.init, // (Int, Int) -> Point
+            from: { point in (point.x, point.y) } // Point -> (Int, Int)
         )
+        // If a generic `Shrinkers.map` or specific tuple shrinkers aren't available,
+        // you might write a custom struct `PointShrinker: Shrinker`.
     }
 }
 ```
 
-### 2. Using Deriving for Simple Cases
+### 2. Enums
 
-For simple types composed of other `Arbitrary` types, you can use a simple mapping approach:
+Use `Gen.frequency` for weighted generation of cases or `Gen.one(of:)` for equal probability. Shrinking typically involves trying simpler cases or shrinking associated values.
 
 ```swift
-struct User: Arbitrary, Sendable {
-    let id: UUID
-    let name: String
-    let age: Int
-    
-    typealias Value = User
-    
-    static var gen: Gen<User> {
-        zip(UUID.gen, String.gen, Int.gen.map { abs($0) % 100 + 18 })
-            .map { User(id: $0, name: $1, age: $2) }
-    }
-    
-    static var shrinker: any Shrinker<User> {
-        // Simple no-shrink implementation if shrinking isn't needed
-        NoShrink<User>()
-        
-        // Or a proper shrinker if needed:
-        // Shrinkers.map(
-        //    from: Shrinkers.tuple(UUID.shrinker, String.shrinker, Int.shrinker),
-        //    to: { User(id: $0.0, name: $0.1, age: $0.2) },
-        //    from: { ($0.id, $0.name, $0.age) }
-        // )
-    }
+import SwiftQC
+import Gen
+
+enum UserAction: Sendable, Equatable {
+    case tap(x: Int, y: Int)
+    case swipe(direction: String)
+    case idle
 }
-```
 
-### 3. For Enum Types
+extension UserAction: Arbitrary {
+    typealias Value = UserAction
 
-For enums, use `Gen.frequency` to specify the relative frequency of each case:
-
-```swift
-enum PaymentMethod: Arbitrary, Sendable {
-    case creditCard(number: String, expiry: String)
-    case paypal(email: String)
-    case applePay
-    
-    typealias Value = PaymentMethod
-    
-    static var gen: Gen<PaymentMethod> {
+    static var gen: Gen<UserAction> {
         Gen.frequency([
-            (3, zip(
-                String.gen.filter { $0.count >= 13 && $0.count <= 19 },
-                String.gen.filter { $0.count == 5 }
-            ).map { PaymentMethod.creditCard(number: $0, expiry: $1) }),
-            (2, String.gen.filter { $0.contains("@") }.map { PaymentMethod.paypal(email: $0) }),
-            (1, Gen.always(PaymentMethod.applePay))
+            (3, zip(Int.gen(in: 0...1024), Int.gen(in: 0...768)).map(UserAction.tap)),
+            (2, Gen.element(of: ["up", "down", "left", "right"]).compactMap { $0 }.map(UserAction.swipe)),
+            (1, Gen.always(UserAction.idle))
         ])
     }
-    
-    static var shrinker: any Shrinker<PaymentMethod> {
-        // Custom enum shrinker implementation
-        EnumShrinker { value in
-            switch value {
-            case .creditCard(let number, let expiry):
-                return [.applePay] + // Shrink to simpler case
-                       String.shrinker.shrink(number).map { PaymentMethod.creditCard(number: $0, expiry: expiry) } +
-                       String.shrinker.shrink(expiry).map { PaymentMethod.creditCard(number: number, expiry: $0) }
-            case .paypal(let email):
-                return [.applePay] + // Shrink to simpler case
-                       String.shrinker.shrink(email).map { PaymentMethod.paypal(email: $0) }
-            case .applePay:
-                return [] // Nothing simpler to shrink to
+
+    static var shrinker: any Shrinker<UserAction> {
+        // Define a custom shrinker struct for enums
+        struct UserActionShrinker: Shrinker {
+            func shrink(_ value: UserAction) -> [UserAction] {
+                var shrinks: [UserAction] = []
+                // Always try to shrink to the simplest case first
+                if value != .idle {
+                    shrinks.append(.idle)
+                }
+
+                switch value {
+                case .tap(let x, let y):
+                    // Shrink associated values
+                    for sx in Int.shrinker.shrink(x) { shrinks.append(.tap(x: sx, y: y)) }
+                    for sy in Int.shrinker.shrink(y) { shrinks.append(.tap(x: x, y: sy)) }
+                    // Could also shrink to a simpler version of tap, e.g., .tap(x:0, y:0)
+                    if x != 0 || y != 0 { shrinks.append(.tap(x:0, y:0)) }
+                case .swipe(let direction):
+                    // Shrink associated value (String)
+                    for sd in String.shrinker.shrink(direction) {
+                        // Ensure shrunk direction is still valid if there are constraints
+                        if ["up", "down", "left", "right"].contains(sd) || sd.isEmpty {
+                            shrinks.append(.swipe(direction: sd))
+                        }
+                    }
+                    // Offer a default swipe direction if current is not it
+                    if direction != "up" { shrinks.append(.swipe(direction: "up"))}
+                case .idle:
+                    break // Simplest case, no further shrinks
+                }
+                return Array(Set(shrinks.filter { $0 != value })) // Deduplicate
             }
         }
+        return UserActionShrinker()
     }
 }
 ```
 
-## Testing Your Arbitrary Implementation
+### 3. Controlling Generation with Custom `Gen`
 
-Once you've defined your `Arbitrary` conformance, test it using `forAll`:
+Sometimes you need finer control over the generated values, perhaps to ensure they meet certain preconditions for your tests.
 
 ```swift
-@Test
-func pointReflectionIsItsOwnInverse() async {
-    await forAll("Point reflection property") { (point: Point) in
-        let reflected = Point(x: -point.x, y: -point.y)
-        let original = Point(x: -reflected.x, y: -reflected.y)
-        #expect(original.x == point.x)
-        #expect(original.y == point.y)
+struct PositiveIntProvider: Arbitrary, Sendable {
+    typealias Value = Int // The type we are providing an Arbitrary for
+
+    static var gen: Gen<Int> {
+        Gen.int(in: 1...Int.max) // Ensure positive
+    }
+
+    static var shrinker: any Shrinker<Int> {
+        // Adapt Int.shrinker to only produce positive results
+        struct PositiveIntShrinker: Shrinker {
+            func shrink(_ value: Int) -> [Int] {
+                return Int.shrinker.shrink(value).filter { $0 > 0 }
+            }
+        }
+        return PositiveIntShrinker()
     }
 }
-```
 
-## Using ArbitraryDictionary
-
-`ArbitraryDictionary` is a wrapper that provides `Arbitrary` conformance for dictionaries:
-
-```swift
-let dictGen = ArbitraryDictionary<String, Int>.gen 
-// Generates Dictionary<String, Int>
-
-// Or use the ergonomic forAll overload:
+// Usage:
 await forAll(
-    "Dictionary property", 
-    String.self, 
-    Int.self, 
-    forDictionary: true
-) { (dict: Dictionary<String, Int>) in
-    // Test the property
-}
-```
-
-The `ArbitraryDictionary` wrapper is used internally by the ergonomic `forAll` overload for dictionaries, but you can use it directly for more control over dictionary generation if needed.
-
-### Direct Usage Example
-
-```swift
-// Custom dictionary shrinking logic
-struct CustomDictionary<K: Arbitrary & Hashable, V: Arbitrary>: Arbitrary {
-    typealias Value = Dictionary<K.Value, V.Value>
-    
-    static var gen: Gen<Dictionary<K.Value, V.Value>> {
-        ArbitraryDictionary<K, V>.gen
-    }
-    
-    static var shrinker: any Shrinker<Dictionary<K.Value, V.Value>> {
-        // Custom dictionary shrinking logic
-        MyCustomShrinkingLogic<K.Value, V.Value>()
-    }
-}
-
-// Using the custom dictionary type
-await forAll(
-    "Custom dictionary property", 
-    CustomDictionary<String, Int>.self
-) { (dict: Dictionary<String, Int>) in
-    // Test the property
-}
-```
-
-## Bias and Control
-
-For finer control over the generated values, you can use generators with specific biases:
-
-```swift
-struct PositiveInt: Arbitrary, Sendable {
-    typealias Value = Int
-    
-    static var gen: Gen<Int> { 
-        Gen.int(in: 1...Int.max) 
-    }
-    
-    static var shrinker: any Shrinker<Int> { 
-        Shrinkers.int.filter { $0 > 0 } 
-    }
-}
-
-await forAll(
-    "Square root of positive integers", 
-    PositiveInt.self
-) { (n: Int) in
+    "Property for positive integers",
+    PositiveIntProvider.self // Pass the Arbitrary provider type
+) { (n: Int) in // The closure receives the Int
     #expect(n > 0)
-    let sqrt = Double(n).squareRoot()
-    #expect(sqrt > 0)
+    // ... your test logic ...
+}
+```This pattern is useful for creating test-local "providers" of `Arbitrary` values with specific characteristics.
+
+### 4. Using `ArbitraryDictionary`
+
+For dictionaries, SwiftQC provides the `ArbitraryDictionary<KeyArbitrary, ValueArbitrary>` wrapper due to Swift's type system constraints. The ergonomic `forAll` overload for dictionaries handles this internally.
+
+```swift
+// Ergonomic usage (recommended):
+await forAll(
+    "Dictionary property",
+    String.self, // Type providing Arbitrary for Keys (String.Value must be Hashable)
+    Int.self,    // Type providing Arbitrary for Values
+    forDictionary: true // Disambiguating parameter
+) { (dict: Dictionary<String, Int>) in // Closure receives the actual Dictionary
+    // ... test dict ...
+}
+
+// Direct usage of ArbitraryDictionary (less common, for advanced control):
+await forAll(
+    "Direct ArbitraryDictionary usage",
+    ArbitraryDictionary<String, Int>.self // Pass the wrapper type as the Arbitrary provider
+) { (dict: Dictionary<String, Int>) in // Closure still receives the Dictionary
+    // ... test dict ...
+}
+```
+If you need a dictionary with custom `Arbitrary` types for its keys or values, you'd use the ergonomic `forAll` and pass your custom `Arbitrary`-conforming types:
+```swift
+struct MyCustomKey: Arbitrary, Hashable, Sendable { /* ... */ }
+struct MyCustomValue: Arbitrary, Sendable { /* ... */ }
+
+await forAll(
+    "Custom Dictionary Content",
+    MyCustomKey.self,
+    MyCustomValue.self,
+    forDictionary: true
+) { (dict: Dictionary<MyCustomKey.Value, MyCustomValue.Value>) in
+    // ...
 }
 ```
 
-This approach is particularly useful for test-local generators that enforce specific constraints needed for your properties. 
+## Testing Your `Arbitrary` Implementation
+
+After defining an `Arbitrary` conformance, it's crucial to test it:
+1.  **Test `gen`:** Does it produce a variety of valid instances? Does it cover edge cases if appropriate?
+2.  **Test `shrinker`:** For non-minimal values, does it produce "smaller" values? Does it include sensible simple targets (e.g., 0, empty, nil)? Does it produce an empty array for already minimal values?
+3.  **Test with `forAll`:** Write a simple property test using your new `Arbitrary` type to ensure it integrates correctly with the `forAll` runner.
+
+Refer to `ArbitraryTests.swift` in the SwiftQC test suite for examples of how to structure these tests.

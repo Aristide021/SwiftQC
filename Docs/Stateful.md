@@ -1,85 +1,197 @@
-## Stateful Testing
+# Stateful Property-Based Testing with SwiftQC
 
-SwiftQC provides a framework for stateful property-based testing, modeled after approaches like Quviq. This allows you to test systems that maintain state over time by generating sequences of commands and verifying that applying these commands to a real system yields results consistent with a simplified model (the "fake" model).
+SwiftQC provides a powerful framework for **stateful property-based testing**, drawing inspiration from established systems like Erlang QuickCheck (Quviq). This approach is invaluable for testing systems that maintain state and whose behavior depends on a sequence of operations performed over time.
 
-### The `StateModel` Protocol
+The core idea is to:
+1.  Define a simplified **model** of your system under test (SUT).
+2.  Generate random sequences of **commands** (operations).
+3.  Execute these commands against both your model and the actual SUT.
+4.  Verify that the SUT's responses and behavior are **consistent** with the model's predictions.
+5.  If a discrepancy (divergence) is found, SwiftQC attempts to **shrink** the command sequence to the smallest possible list of commands that still reproduces the issue.
 
-The core of stateful testing is the `StateModel` protocol. You define a type that conforms to this protocol to model the behavior of the system under test.
+## The `StateModel` Protocol
+
+At the heart of stateful testing in SwiftQC is the `StateModel` protocol. You conform a type (typically a `struct`) to this protocol to describe the abstract state, commands, responses, and behavior of your system.
 
 ```swift
 public protocol StateModel {
-    associatedtype State: Equatable
-    associatedtype ReferenceType: Referenceable
+    // The type representing the abstract state of your model.
+    // Must be Equatable for comparisons and Sendable if used across concurrent contexts.
+    associatedtype State: Equatable // Ensure conforming types are Sendable
 
-    associatedtype CommandVar   // Command with symbolic references (Var<ReferenceType>)
-    associatedtype ResponseVar  // Response with symbolic references (Var<ReferenceType>)
+    // A type for symbolic references generated during command generation.
+    // Must be Hashable (for use in maps) and Sendable.
+    associatedtype ReferenceType: Referenceable // Referenceable implies Hashable & Sendable
 
-    associatedtype CommandConcrete // Command with concrete references (ReferenceType)
-    associatedtype ResponseConcrete // Response with concrete references (ReferenceType)
+    // --- Symbolic (Model-Level) Types ---
+    /// The type for commands as generated, potentially containing symbolic references (`Var<ReferenceType>`).
+    associatedtype CommandVar // Ensure conforming types are Sendable
+    /// The type for responses as predicted by the model, potentially containing symbolic references.
+    associatedtype ResponseVar // Ensure conforming types are Sendable
 
+    // --- Concrete (SUT-Level) Types ---
+    /// The type for commands as executed on the SUT, with concrete references.
+    associatedtype CommandConcrete // Ensure conforming types are Sendable
+    /// The type for responses received from the SUT, with concrete references.
+    associatedtype ResponseConcrete // Ensure conforming types are Sendable
+
+    // --- System Under Test (SUT) ---
+    /// The type of the actual system being tested.
+    associatedtype SUT // Ensure conforming types are Sendable if SUT is accessed across actors
+
+    /// The initial abstract state of the model.
     static var initialState: State { get }
 
+    /// Generates a symbolic command based on the current model state.
     static func generateCommand(_ state: State) -> Gen<CommandVar>
 
-    static func shrinkCommand(_ state: State, _ cmd: CommandVar) -> [CommandVar]
+    /// (Optional) Shrinks a symbolic command. Useful for simplifying individual commands
+    /// within a failing sequence.
+    static func shrinkCommand(_ cmd: CommandVar, inState state: State) -> [CommandVar]
 
-    static func runFake(
-        _ cmd: CommandVar,
-        _ state: State
-    ) -> Either<PreconditionFailure, (State, ResponseVar)>
+    /// Executes a symbolic command on the model state.
+    /// Returns either a `PreconditionFailure` (if the command cannot be run in the current state)
+    /// or the new model state and the symbolic response.
+    static func runFake(_ cmd: CommandVar, inState state: State) -> Either<PreconditionFailure, (State, ResponseVar)>
 
+    /// Executes a concrete command on the actual System Under Test (SUT).
+    /// Returns an asynchronous operation (`CommandMonad`) that yields the concrete response.
     static func runReal(
-        _ cmd: CommandConcrete
-    ) -> CommandMonad<ResponseConcrete>
+        _ cmd: CommandConcrete,
+        sut: SUT // The instance of the SUT to operate on
+    ) -> CommandMonad<ResponseConcrete> // CommandMonad<A: Sendable> = @Sendable () async throws -> A
 
+    /// Converts a symbolic command (with `Var<ReferenceType>`) to a concrete command
+    /// (with `ReferenceType`) using a resolver function. The resolver looks up
+    /// concrete references that were generated by previous commands.
     static func concretizeCommand(
         _ symbolicCmd: CommandVar,
-        resolver: (Var<ReferenceType>) -> ReferenceType
+        resolver: @Sendable (Var<ReferenceType>) -> ReferenceType
     ) -> CommandConcrete
     
+    /// Compares a symbolic response from `runFake` with a concrete response from `runReal`,
+    /// potentially using the resolver to compare symbolic references with concrete ones.
     static func areResponsesEquivalent(
         symbolicResponse: ResponseVar,
         concreteResponse: ResponseConcrete,
-        resolver: (Var<ReferenceType>) -> ReferenceType
+        resolver: @Sendable (Var<ReferenceType>) -> ReferenceType
     ) -> Bool
 
-    static func monitoring<PropValue>(
-        from: (oldState: State, newState: State),
-        command: CommandConcrete,
-        response: ResponseConcrete,
-        property: Property<PropValue>
+    /// (Optional) Allows for collecting metrics, classifying test runs, or adding custom checks
+    /// after each command execution.
+    static func monitoring<PropValue: Sendable>(
+        from: (oldState: State, newState: State), // Model states
+        command: CommandConcrete,                 // Concrete command executed
+        response: ResponseConcrete,               // Concrete response from SUT
+        property: Property<PropValue>             // The overall property context
     ) -> Property<PropValue>
+    
+    /// (Optional) Extracts newly created concrete references from the SUT's response
+    /// and maps them to their corresponding symbolic `Var`s from the model's response.
+    /// This is crucial for testing systems where commands create resources that subsequent
+    /// commands need to refer to (e.g., creating a file returns an ID, then later commands use that ID).
+    static func extractNewReferences(
+        responseVar: ResponseVar,       // Symbolic response from the model
+        responseConcrete: ResponseConcrete // Concrete response from the SUT
+    ) -> [Var<ReferenceType>: ReferenceType]
 }
 ```
 
-Key components you need to provide:
+**Default Implementations:**
+- `shrinkCommand`: Returns an empty array (no command shrinking by default).
+- `monitoring`: Returns the property unchanged.
+- `extractNewReferences`: Returns an empty dictionary (no reference extraction by default).
 
--   `State`: The type representing your model's state.
--   `ReferenceType`: A type used for modeling references within your commands and responses.
--   `CommandVar` / `CommandConcrete`: Types for commands using symbolic (`Var<ReferenceType>`) and concrete (`ReferenceType`) references, respectively.
--   `ResponseVar` / `ResponseConcrete`: Types for responses using symbolic and concrete references.
--   `initialState`: The starting state of your model.
--   `generateCommand`: A generator for producing the next command given the current state.
--   `shrinkCommand`: (Optional) A function to shrink individual commands.
--   `runFake`: Executes a command on your *model* state and returns the new state and a symbolic response, or a precondition failure.
--   `runReal`: Executes a command on the *actual system under test* and returns a concrete response within a `CommandMonad` (typically an `async` closure).
--   `concretizeCommand`: Converts a symbolic command to a concrete one using a resolver for references.
--   `areResponsesEquivalent`: Compares a symbolic response from `runFake` with a concrete response from `runReal`, considering reference mapping.
--   `monitoring`: (Optional) Allows for tracking coverage or classification based on state transitions, commands, and responses.
+**Key Components You Need to Provide:**
+-   `State`: Your model's state representation (e.g., a struct).
+-   `ReferenceType`: If your system deals with dynamically created references (like IDs, handles), define a type for them. Use a simple `struct NoReference: Referenceable {}` if not needed.
+-   `CommandVar` / `CommandConcrete`: Your command types. Often, these can be the same enum if commands don't contain references, or a generic enum `MyCommand<Ref>` aliased appropriately.
+-   `ResponseVar` / `ResponseConcrete`: Your response types, similar to commands.
+-   `SUT`: The actual class or actor you are testing.
+-   Implementations for `initialState`, `generateCommand`, `runFake`, `runReal`, `concretizeCommand`, and `areResponsesEquivalent`. Implement `extractNewReferences` if your commands generate referable entities.
 
-### Running Stateful Tests
+## Helper Types
 
-The documentation describes a `stateful` runner function:
+SwiftQC provides these helpers for use in your `StateModel`:
+
+-   **`Var<ReferenceType>`:** A wrapper for symbolic references. It's `Hashable` to be used as dictionary keys for mapping symbolic to concrete references.
+-   **`Referenceable`:** A protocol (`Hashable & Sendable`) that your concrete reference types must conform to.
+-   **`PreconditionFailure`:** An `Error` type to return from `runFake` if a command's preconditions are not met.
+-   **`Either<Left, Right>`:** Used by `runFake` to return a precondition failure or a success.
+-   **`CommandMonad<A>`:** A typealias for `@Sendable () async throws -> A`, representing the asynchronous execution of a command on the SUT.
+
+## Running Stateful Tests
+
+SwiftQC provides the `stateful` function to drive your state machine tests:
 
 ```swift
-public func stateful<T: StateModel>(
-  _ propertyName: String,
-  count: Int = 100,
-  file: StaticString = #file, line: UInt = #line,
-  _ property: @escaping (Commands<T>) async throws -> Void // Note: Commands<T> represents the generated command sequence
-) async
+public func stateful<Model: StateModel, SUT_Runner: Sendable>(
+    _ propertyName: String,
+    sutFactory: @Sendable () async -> SUT_Runner, // Factory to create/reset SUT per sequence
+    maxCommandsInSequence: Int = 100,             // Max commands per test sequence
+    numberOfSequences: Int = 10,                  // Number of command sequences to run
+    seed: UInt64? = nil,
+    reporter: Reporter = ConsoleReporter(),
+    file: StaticString = #file,
+    line: UInt = #line
+) async -> TestResult<CommandSequence<Model>>
+    where Model.SUT == SUT_Runner,
+          // Necessary Sendable constraints for the runner
+          Model.State: Sendable, Model.CommandVar: Sendable, Model.ResponseVar: Sendable,
+          Model.CommandConcrete: Sendable, Model.ResponseConcrete: Sendable,
+          Model.ReferenceType: Sendable
 ```
 
-**Note:** Based on the current codebase analysis, the implementation of the `stateful` runner and the underlying execution logic in `StatefulRunner.swift` appear to be incomplete or minimal. While the `StateModel` protocol is defined, the full stateful testing workflow driven by this runner might not be fully functional yet.
+**How it Works:**
+1.  The `stateful` runner executes `numberOfSequences` test runs.
+2.  For each sequence:
+    a.  An instance of your `SUT` is created using the `sutFactory`.
+    b.  Starting from `Model.initialState`, the runner generates a sequence of up to `maxCommandsInSequence` commands using `Model.generateCommand`.
+    c.  For each command:
+        i.  It's executed on the model via `Model.runFake`. If a precondition fails, the command is skipped (up to a limit).
+        ii. If `runFake` succeeds, the symbolic command is concretized using `Model.concretizeCommand` (with a resolver for references created in the current sequence).
+        iii.The concrete command is executed on the SUT via `Model.runReal`.
+        iv. New references from `Model.extractNewReferences` are added to the resolver's map.
+        v.  The model's response (`ResponseVar`) is compared to the SUT's response (`ResponseConcrete`) using `Model.areResponsesEquivalent`.
+3.  **Failure Conditions:**
+    *   If `runReal` throws an unhandled error.
+    *   If `areResponsesEquivalent` returns `false`.
+4.  **Shrinking (Future Enhancement):** Currently, if a sequence fails, the entire failing sequence is reported. Future enhancements will include shrinking the command sequence to find a minimal failing sub-sequence.
+5.  **Result:** Returns a `TestResult<CommandSequence<Model>>`, where `CommandSequence` contains the list of executed commands, responses, and state transitions for a failing sequence.
 
-To use stateful testing when the runner is complete, you would typically define your `StateModel` and then call the `stateful` function, providing a property closure that executes the generated command sequence (represented by `Commands<T>`) against your system under test.
+### Example Usage (Conceptual - using the `CounterModel` from tests)
+
+```swift
+import SwiftQC
+import Testing
+
+// Assume CounterModel and RealCounterSUT are defined as shown in SwiftQCTests/StatefulTests.swift
+
+@Test("@MainActor Counter Stateful Test") // Use @MainActor if SUT requires it
+func counterBehavesAsModelled() async {
+    // The sutFactory creates a fresh SUT for each command sequence test.
+    // Ensure SUT state is reset or new for each sequence.
+    // If RealCounterSUT has a reset() method:
+    // let mySUT = RealCounterSUT()
+    // let factory = { mySUT.reset(); return mySUT }
+    // Or for true isolation:
+    let factory = { /* await */ RealCounterSUT() } // Ensure SUT is Sendable or factory runs on correct actor
+
+    let result: TestResult<CommandSequence<CounterModel>> = await SwiftQC.stateful(
+        "Counter Correctness",
+        sutFactory: factory,
+        maxCommandsInSequence: 50,
+        numberOfSequences: 20
+    )
+
+    if case .falsified(let sequence, let error, _, let seed) = result {
+        // Log detailed failure information
+        var failureLog = "Counter stateful test failed. Seed: \(seed ?? 0).\nError: \(error)\nSequence (StateBefore -> Cmd -> ModelResp/SUTResp -> StateAfter):\n"
+        for (index, step) in sequence.steps.enumerated() {
+            failureLog += "  [\(index)] \(step.stateBefore) -> \(step.concreteCommand) -> M:\(step.modelResponse)/S:\(step.actualResponse) -> \(step.stateAfter)\n"
+        }
+        XCTFail(failureLog) // Or use #expect(Bool(false), failureLog) with Swift Testing
+    }
+}
+```
+This example demonstrates how to set up and run a stateful test. You would replace `CounterModel` and `RealCounterSUT` with your own system's model and implementation.

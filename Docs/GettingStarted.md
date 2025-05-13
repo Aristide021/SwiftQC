@@ -1,17 +1,29 @@
 # Getting Started with SwiftQC
 
-This guide will help you get started with SwiftQC for property-based testing in Swift.
+This guide provides a quick introduction to using SwiftQC for property-based testing in your Swift projects. SwiftQC helps you write more robust tests by checking your code against a wide variety of randomly generated inputs and finding minimal counterexamples when failures occur.
 
 ## Installation
 
-Add SwiftQC to your project via Swift Package Manager:
+Add SwiftQC to your project's `Package.swift` dependencies:
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/your-repo/SwiftQC.git", .upToNextMajor(from: "1.0.0"))
+dependencies: [
+    .package(url: "https://github.com/your-repo/SwiftQC.git", .upToNextMajor(from: "1.0.0")) // Replace with actual URL
+]
 ```
 
-Or in Xcode: **File → Add Packages…** and enter the repository URL.
+Then, add `SwiftQC` to your test target's dependencies:
+```swift
+// Package.swift
+targets: [
+    .testTarget(
+        name: "MyLibraryTests",
+        dependencies: ["MyLibrary", "SwiftQC"]
+    )
+]
+```
+In Xcode, you can also use **File → Add Packages…** and enter the repository URL.
 
 ## Basic Usage
 
@@ -19,49 +31,58 @@ Import the necessary modules in your test file:
 
 ```swift
 import SwiftQC
-import Gen  // Gen is re-exported but often useful to import directly
-import Testing  // Or XCTest if not using Swift Testing
+import Gen      // For direct access to Gen<T> and its combinators
+import Testing  // If using Swift Testing
+// import XCTest // If using XCTest
 ```
 
 ## Using `forAll` for Property Testing
 
-The `forAll` function is the primary way to run property tests in SwiftQC. It automatically:
-- Generates random values of the specified types
-- Runs your property with those values
-- Shrinks inputs if any failures are found
-- Reports concise results
+The `forAll` function is the heart of SwiftQC. It automatically:
 
-### Single Input Properties
+1.  **Generates** random inputs based on the types specified or their `Arbitrary` conformance.
+2.  **Runs** your property closure with these generated inputs for a configurable number of iterations.
+3.  **Shrinks** any failing input to find a simpler, minimal counterexample that still causes the failure.
+4.  **Reports** success or the minimal failure, integrating with Swift Testing's issue system or allowing custom reporters.
 
-For properties involving a single input type that conforms to `Arbitrary`:
+### 1. Single Input Properties
+
+If your property takes a single input type that conforms to `Arbitrary` (like most standard Swift types):
 
 ```swift
-@Test
-func intIdentity() async {
-    await forAll("Integer identity property") { (n: Int) in
-        #expect(n + 0 == n)  // Using Swift Testing
-        // Or: XCTAssertEqual(n + 0, n)  // Using XCTest
+import SwiftQC
+import Testing // Or XCTest
+
+@Test // Swift Testing example
+func integerIdentityProperty() async {
+    await forAll("Integer identity: n + 0 == n") { (n: Int) in
+        #expect(n + 0 == n)
+        // Or using XCTest:
+        // XCTAssertEqual(n + 0, n)
     }
 }
 
 @Test
-func stringReversalIdentity() async {
-    await forAll("String reversal identity") { (s: String) in
-        let reversed = String(s.reversed())
-        let backToOriginal = String(reversed.reversed())
-        #expect(backToOriginal == s)
+func stringReversalIsItsOwnInverse() async {
+    await forAll("String double reversal yields original") { (s: String) in
+        #expect(String(s.reversed().reversed()) == s)
     }
 }
 ```
+SwiftQC will automatically use `Int.gen` and `Int.shrinker` (or `String.gen` and `String.shrinker`) from their `Arbitrary` conformances.
 
-### Multiple Input (Tuple) Properties
+### 2. Multiple Input (Tuple) Properties
 
-For properties involving multiple inputs, provide the types (`.self`) after the description:
+For properties with multiple inputs, provide the `Arbitrary`-conforming types (`.self`) after the description to help SwiftQC select the correct overload. SwiftQC supports ergonomic overloads for up to 5 tuple inputs.
 
 ```swift
 @Test
-func additiveCommutativity() async {
-    await forAll("Integer addition is commutative", Int.self, Int.self) { (a: Int, b: Int) in
+func additionIsCommutative() async {
+    await forAll(
+        "Integer addition is commutative",
+        Int.self,    // Type for 'a'
+        Int.self     // Type for 'b'
+    ) { (a: Int, b: Int) in
         #expect(a + b == b + a)
     }
 }
@@ -69,8 +90,10 @@ func additiveCommutativity() async {
 @Test
 func stringConcatenationLength() async {
     await forAll(
-        "String concatenation preserves length", 
-        String.self, String.self, String.self
+        "String concatenation length",
+        String.self, // Type for s1
+        String.self, // Type for s2
+        String.self  // Type for s3
     ) { (s1: String, s2: String, s3: String) in
         let combined = s1 + s2 + s3
         #expect(combined.count == s1.count + s2.count + s3.count)
@@ -78,122 +101,125 @@ func stringConcatenationLength() async {
 }
 ```
 
-### Dictionary Properties
+### 3. Dictionary Properties
 
-A specialized overload handles `Dictionary` properties:
+SwiftQC provides a specialized ergonomic `forAll` overload for testing properties involving `Dictionary` inputs. You need to specify the `Arbitrary`-conforming types for the Key and Value, and an additional `forDictionary: true` parameter to help with overload resolution. The Key's generated value (`K.Value`) must be `Hashable`.
 
 ```swift
 @Test
-func dictionaryMerging() async {
+func dictionaryContainsKeyAfterInsertion() async {
+    // Assuming String and Int have Arbitrary conformances
     await forAll(
-        "Dictionary merging combines entries", 
-        String.self,  // Key type
-        Int.self,     // Value type
+        "Dictionary contains key after insertion",
+        String.self,  // Arbitrary type for Keys (String.Value is String, which is Hashable)
+        Int.self,     // Arbitrary type for Values
         forDictionary: true
-    ) { (dict1: [String: Int]) in
-        // Generate a second dictionary using the same parameters
-        let dict2 = ArbitraryDictionary<String, Int>.gen.run()
-        
-        let merged = dict1.merging(dict2) { (current, _) in current }
-        
-        #expect(merged.count <= dict1.count + dict2.count)
-        for (key, value) in dict1 {
-            #expect(merged[key] == value)
-        }
-    }
-}
+    ) { (initialDict: Dictionary<String, Int>) in
+        // Generate an additional key-value pair to insert
+        var rng = Xoshiro() // For local ad-hoc generation if needed
+        let keyToInsert = String.gen.run(using: &rng)
+        let valueToInsert = Int.gen.run(using: &rng)
 
-// You can also create custom Arbitrary types for specialized dictionaries
-struct EvenIntArbitrary: Arbitrary, Sendable {
-    typealias Value = Int
-    static var gen: Gen<Int> { Int.gen.map { $0 * 2 } }
-    static var shrinker: any Shrinker<Int> { Shrinkers.int.map { $0 & ~1 } } // Ensure even
-}
-
-@Test
-func dictionaryWithCustomValues() async {
-    await forAll(
-        "Dictionary with even integer values", 
-        String.self, 
-        EvenIntArbitrary.self, 
-        forDictionary: true
-    ) { (dict: [String: Int]) in
-        for value in dict.values {
-            #expect(value % 2 == 0)
-        }
+        var modifiedDict = initialDict
+        modifiedDict[keyToInsert] = valueToInsert
+        #expect(modifiedDict[keyToInsert] == valueToInsert)
     }
 }
 ```
+Internally, this uses `ArbitraryDictionary<K, V>` to provide generation and shrinking for dictionaries.
 
-## Working with Custom Types
+## Conforming Custom Types to `Arbitrary`
 
-For custom types, implement the `Arbitrary` protocol (see [Arbitrary.md](Arbitrary.md) for details):
+To test properties with your own custom types, they must conform to the `Arbitrary` protocol. This involves providing a static generator (`gen`) and a static shrinker (`shrinker`).
 
 ```swift
-struct Point: Arbitrary, Sendable {
+import SwiftQC
+import Gen // For zip, Gen.int etc.
+
+struct Point: Sendable, Equatable { // Equatable is useful for assertions
     let x: Int
     let y: Int
-    
+}
+
+extension Point: Arbitrary {
+    // 1. Specify the type of value generated and shrunk
     typealias Value = Point
-    
+
+    // 2. Provide a generator
     static var gen: Gen<Point> {
-        zip(Int.gen, Int.gen).map { Point(x: $0, y: $1) }
+        zip(Int.gen, Int.gen).map { xCoord, yCoord in
+            Point(x: xCoord, y: yCoord)
+        }
+        // Shorter alternative: zip(Int.gen, Int.gen).map(Point.init)
     }
-    
+
+    // 3. Provide a shrinker
     static var shrinker: any Shrinker<Point> {
-        Shrinkers.map(
-            from: Shrinkers.tuple(Int.shrinker, Int.shrinker),
-            to: { Point(x: $0.0, y: $0.1) },
-            from: { ($0.x, $0.y) }
+        // Use a tuple shrinker for (Int, Int) and map results back to Point
+        // This assumes you have PairShrinker or a similar utility.
+        PairShrinker(Int.shrinker, Int.shrinker).map(
+            into: Point.init, // Constructor or closure: (Int, Int) -> Point
+            from: { point in (point.x, point.y) } // Closure: Point -> (Int, Int)
         )
+        // If you don't have a generic map for shrinkers,
+        // you'd define a `struct PointShrinker: Shrinker { ... }`.
     }
 }
 
+// Now you can use Point in forAll:
 @Test
-func pointProperties() async {
-    await forAll("Point reflection property") { (p: Point) in
+func pointReflectionIsIdentity() async {
+    await forAll("Point reflection is identity") { (p: Point) in
         let reflected = Point(x: -p.x, y: -p.y)
         let backToOriginal = Point(x: -reflected.x, y: -reflected.y)
-        #expect(backToOriginal.x == p.x)
-        #expect(backToOriginal.y == p.y)
+        #expect(backToOriginal.x == p.x && backToOriginal.y == p.y)
     }
 }
 ```
+For more details and patterns, see [Arbitrary.md](Arbitrary.md).
 
 ## Controlling Test Parameters
 
-You can control test parameters like iterations count and seed:
+You can customize `forAll` runs by specifying the `count` (number of successful iterations) and a `seed` (for reproducible results):
 
 ```swift
 @Test
-func intPropertyWithControlledParams() async {
-    // Run with 500 iterations instead of the default
-    await forAll("Integer property with more iterations", count: 500) { (n: Int) in
+func controlledIntegerProperty() async {
+    // Run with 1000 iterations instead of the default 100
+    await forAll("Integer property with more iterations", count: 1000) { (n: Int) in
         #expect(n * 1 == n)
     }
     
-    // Run with a specific seed for reproducibility
+    // Run with a specific seed for reproducibility.
+    // If this test fails, running it again with seed 12345 will generate the exact same sequence of inputs.
+    let mySeed: UInt64 = 12345
     await forAll(
         "Integer property with fixed seed",
-        count: 100,
-        withSeed: 12345
+        count: 100, // Count still applies
+        seed: mySeed 
     ) { (n: Int) in
         #expect(n + n == 2 * n)
     }
 }
 ```
+The `seed` used for a run (whether user-provided or auto-generated) is reported upon test failure.
 
 ## Using with XCTest
 
-If you're using XCTest instead of Swift Testing:
+SwiftQC works seamlessly with XCTest as well:
 
 ```swift
 import XCTest
 import SwiftQC
+import Gen // Often needed for custom generators
 
-class MyPropertyTests: XCTestCase {
-    func testIntegerProperties() async {
-        await forAll("Integer addition is commutative") { (a: Int, b: Int) in
+class MyLibraryXCTests: XCTestCase {
+    func testIntegerPropertiesWithXCTest() async {
+        // Note: XCTest methods are not async by default unless you manage expectations.
+        // For simplicity with async forAll, you might wrap XCTest calls.
+        // Or ensure your property is not async if the XCTest method isn't.
+        // Here, assuming forAll handles the async nature appropriately within XCTest.
+        await forAll("Integer addition is commutative (XCTest)") { (a: Int, b: Int) in
             XCTAssertEqual(a + b, b + a)
         }
     }
@@ -202,10 +228,13 @@ class MyPropertyTests: XCTestCase {
 
 ## What to Explore Next
 
-Explore the `Docs/` directory for more detailed information:
-- [Arbitrary.md](Arbitrary.md) - Implementing custom Arbitrary types
-- [Shrinkers.md](Shrinkers.md) - Understanding the shrinking process
-- [Generators.md](Generators.md) - Composing complex generators
-- [Stateful.md](Stateful.md) - Stateful testing techniques
-- [Parallel.md](Parallel.md) - Parallel testing capabilities
-- [Integration.md](Integration.md) - Swift Testing integration details
+This guide covers the basics to get you started. To dive deeper into SwiftQC's capabilities, explore the `Docs/` directory:
+
+-   **[Arbitrary.md](Arbitrary.md):** Detailed guide on making your custom types `Arbitrary`.
+-   **[Generators.md](Generators.md):** Learn more about composing complex `Gen`erators using `swift-gen`.
+-   **[Shrinkers.md](Shrinkers.md):** Understand the shrinking process and how to write effective shrinkers.
+-   **[Stateful.md](Stateful.md):** Introduction to testing stateful systems (runner now implemented!).
+-   **[Parallel.md](Parallel.md):** Overview of planned features for testing concurrent systems.
+-   **[Integration.md](Integration.md):** Details on how SwiftQC integrates with Swift Testing's issue reporting.
+
+Happy testing!
