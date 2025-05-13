@@ -8,7 +8,8 @@
 import Foundation // For Error
 
 /// Represents the result of running a property test.
-public enum TestResult<Value> {
+// Value must be Sendable if TestResult is to be Sendable
+public enum TestResult<Value: Sendable>: Sendable { // Add Sendable and Value: Sendable
     /// The property passed successfully for all tested inputs.
     case succeeded(testsRun: Int)
 
@@ -19,4 +20,8 @@ public enum TestResult<Value> {
     ///   - shrinks: The number of shrinking steps performed to find the minimal counterexample.
     ///   - seed: The seed used for the test run (if available), for reproducibility.
     case falsified(value: Value, error: Error, shrinks: Int, seed: UInt64?)
+    // Note: The 'Error' type in .falsified is not inherently Sendable.
+    // If TestResult instances containing non-Sendable errors are passed across actor boundaries,
+    // runtime warnings or issues might occur. Standard library errors are generally Sendable.
+    // Custom errors should be made Sendable (like TestFailureError).
 } 

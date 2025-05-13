@@ -144,21 +144,21 @@ final class RunnerTests: XCTestCase {
             "Ergonomic Dictionary Always Passes",
             count: testCount,
             reporter: spyReporter,
-            String.self,                 // keyType (K_DictArbitrary.Type)
-            NonNegativeIntArbitrary.self, // valueType (V_DictArbitrary.Type)
-            forDictionary: true,          // The distinguishing parameter
-            { (dict: Dictionary<String, Int>) in // Property closure
-                propertyCalledCount += 1
-                // Simplified assertion to check if the dictionary is not nil or empty
-                XCTAssertFalse(dict.isEmpty, "Dictionary should not be empty.")
-                // Logging the generated values
+            String.self,
+            NonNegativeIntArbitrary.self,
+            forDictionary: true
+        ) { (dict: Dictionary<String, Int>) in
+            propertyCalledCount += 1
+            // Allow empty dictionaries
+            if dict.isEmpty {
+                print("Test property received an empty dictionary (allowed by generator).")
+            } else {
                 for (key, valueInDict) in dict {
-                    print("Generated for key '\(key)': \(valueInDict)") // Log the generated values
                     XCTAssertGreaterThanOrEqual(valueInDict, 0, "Value for key '\(key)' was \(valueInDict), expected non-negative.")
                 }
             }
-        )
-        
+        }
+
         guard case .succeeded(let testsRun) = result else { XCTFail("Expected .succeeded, got \(result)"); return }
         XCTAssertEqual(testsRun, testCount)
         XCTAssertEqual(propertyCalledCount, testCount)

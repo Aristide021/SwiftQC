@@ -56,7 +56,7 @@ public extension ParallelModel {
         // or return no shrinks if sequential shrinking isn't appropriate here.
         // For simplicity, we'll assume the first state is representative for sequential shrinking.
         if let firstState = states.first {
-            return shrinkCommand(firstState, cmd) // Calls StateModel's shrinkCommand
+            return shrinkCommand(cmd, inState: firstState)
         }
         return []
     }

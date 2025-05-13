@@ -17,8 +17,8 @@ public enum Shrinkers {
   public static var int: IntShrinker { IntShrinker() }
 
   /// Shrinks an `Int` toward the lower bound of a range.
-  public static func range(_ bounds: ClosedRange<Int>) -> RangeShrinker {
-    RangeShrinker(bounds: bounds)
+  public static func range(_ bounds: ClosedRange<Int>) -> IntInRangeShrinker {
+    IntInRangeShrinker(bounds: bounds)
   }
 
   /// Shrinks an array by removing elements or shrinking individual elements.
@@ -77,7 +77,7 @@ public struct IntShrinker: Shrinker { /* ... implementation ... */
 }
 
 /// Shrinker for `Int` that moves values toward a given lower bound.
-public struct RangeShrinker: Shrinker { /* ... implementation ... */
+public struct IntInRangeShrinker: Shrinker { /* ... implementation ... */
   public typealias Value = Int
   let bounds: ClosedRange<Int>
   public init(bounds: ClosedRange<Int>) { self.bounds = bounds }
