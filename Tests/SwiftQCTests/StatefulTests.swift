@@ -11,37 +11,6 @@ import Gen             // For Gen if needed by models
 
 // MARK: - Example StateModel: Counter (Copied and adapted from our discussion)
 
-// --- Reference Type ---
-struct NoReference: Referenceable, Equatable, Hashable, Sendable {
-    // No explicit init needed, memberwise is fine if empty or default-able.
-    // If used in a context requiring an init(), `public init() {}` might be needed.
-}
-
-// --- Command & Response Enums ---
-enum CounterCommand: Sendable, CustomStringConvertible {
-    case increment
-    case getValue
-
-    var description: String {
-        switch self {
-        case .increment: return "increment"
-        case .getValue: return "getValue"
-        }
-    }
-}
-
-enum CounterResponse: Equatable, Sendable, CustomStringConvertible {
-    case ackIncrement
-    case value(Int)
-
-    var description: String {
-        switch self {
-        case .ackIncrement: return "ackIncrement"
-        case .value(let v): return "value(\(v))"
-        }
-    }
-}
-
 // --- The System Under Test (SUT) ---
 // For testing, we need a way to reset the SUT's state between test runs or sequences.
 // A class is suitable for this.
@@ -240,7 +209,7 @@ class StatefulTests: XCTestCase {
         case .falsified(let sequence, let error, _, let seed):
             var failureLog = "Counter stateful test failed. Seed: \(seed ?? 0).\nError: \(error)\nSequence:\n"
             for step in sequence.steps {
-                failureLog += "  Cmd: \(step.symbolicCommand), ModelResp: \(step.modelResponse), SUTResp: \(step.actualResponse), ModelAfter: \(step.stateAfter)\n"
+                failureLog += "  Cmd: \(step.symbolicCommand), ModelResp: \(String(describing: step.modelResponse)), SUTResp: \(String(describing: step.actualResponse)), ModelAfter: \(step.stateAfter)\n"
             }
             XCTFail(failureLog)
         }
@@ -269,7 +238,7 @@ class StatefulTests: XCTestCase {
             }
             var failureLog = "Buggy Counter Falsified. Seed: \(seed ?? 0).\nError: \(error)\nSequence:\n"
             for step in sequence.steps {
-                failureLog += "  Cmd: \(step.symbolicCommand), ModelResp: \(step.modelResponse), SUTResp: \(step.actualResponse), ModelAfter: \(step.stateAfter)\n"
+                failureLog += "  Cmd: \(step.symbolicCommand), ModelResp: \(String(describing: step.modelResponse)), SUTResp: \(String(describing: step.actualResponse)), ModelAfter: \(step.stateAfter)\n"
             }
             print(failureLog)
         }

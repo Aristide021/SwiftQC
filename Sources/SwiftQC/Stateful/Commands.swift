@@ -17,7 +17,7 @@ public struct ExecutedCommand<Model: StateModel>: Sendable where
     public let symbolicCommand: Model.CommandVar
     public let concreteCommand: Model.CommandConcrete
     public let modelResponse: Model.ResponseVar
-    public let actualResponse: Model.ResponseConcrete
+    public let actualResponse: Model.ResponseConcrete?
     public let stateBefore: Model.State
     public let stateAfter: Model.State
 
@@ -28,7 +28,7 @@ public struct ExecutedCommand<Model: StateModel>: Sendable where
         symbolicCommand: Model.CommandVar,
         concreteCommand: Model.CommandConcrete,
         modelResponse: Model.ResponseVar,
-        actualResponse: Model.ResponseConcrete,
+        actualResponse: Model.ResponseConcrete?,
         stateBefore: Model.State,
         stateAfter: Model.State
     ) {

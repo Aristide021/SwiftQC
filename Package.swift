@@ -49,6 +49,7 @@ let package = Package(
       name: "SwiftQCTests",
       dependencies: [
         "SwiftQC", // Your library
+        .product(name: "Atomics", package: "swift-atomics"),
         .product(name: "Gen", package: "swift-gen"),     // <-- ADD THIS
         .product(name: "Testing", package: "swift-testing") // <-- ADD THIS
       ],

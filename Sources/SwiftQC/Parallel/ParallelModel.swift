@@ -1,13 +1,9 @@
-import Gen // For Gen
-// StateModel and its helpers are in Sources/SwiftQC/Stateful/StateModel.swift
+import Gen
 
-// MARK: - Helper Type for ParallelModel
-
-/// A simple wrapper for synchronous operations, used by `ParallelModel`
-/// to convert `CommandMonad` instances for thread-spawning.
-public struct IO<A> {
-    public let run: () throws -> A
-    public init(_ run: @escaping () throws -> A) {
+// IO struct should be public if used across modules, and A should be Sendable if IO instances are passed around.
+public struct IO<A: Sendable> { // Made A Sendable here
+    public let run: @Sendable () async throws -> A // run is async and Sendable
+    public init(_ run: @escaping @Sendable () async throws -> A) { // init takes an async and Sendable closure
         self.run = run
     }
 }
@@ -46,7 +42,7 @@ public protocol ParallelModel: StateModel where State: Comparable {
     ///
     /// - Parameter action: The `CommandMonad` to convert.
     /// - Returns: An `IO` action.
-    static func runCommandMonad<A>(_ action: CommandMonad<A>) -> IO<A>
+    static func runCommandMonad<A: Sendable>(_ action: @escaping CommandMonad<A>) -> IO<A> // ADDED @escaping here
 }
 
 // Default implementation for shrinkParallelCommand to make it optional.
@@ -57,7 +53,15 @@ public extension ParallelModel {
         // For simplicity, we'll assume the first state is representative for sequential shrinking.
         if let firstState = states.first {
             return shrinkCommand(cmd, inState: firstState)
+        } else {
+            // If states is empty, perhaps return an empty array or handle as appropriate
+            // For now, consistent with original potentially empty shrinkCommand from StateModel if firstState is nil
+            return [] 
         }
-        return []
+    }
+    
+    // Default implementation for extractNewReferences if not overridden by conforming types
+    static func extractNewReferences(responseVar: ResponseVar, responseConcrete: ResponseConcrete) -> [Var<ReferenceType>: ReferenceType] {
+        return [:]
     }
 }
