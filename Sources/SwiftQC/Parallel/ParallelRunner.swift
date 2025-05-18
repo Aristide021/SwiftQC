@@ -160,30 +160,21 @@ public func parallel<Model: ParallelModel, SUT_Runner>(
         threads: threads
     )
 
-    // Debugging prints to trace error states
-    print("[parallel func DEBUG] executionResultAfterRunner.overallError: \(String(describing: executionResultAfterRunner.overallError))")
-
     let errorDetectedByRunner = executionResultAfterRunner.overallError // Capture the error from the runner
     var finalErrorToReport: Error? = errorDetectedByRunner // Initialize with runner's error
 
-    // Debugging print for error detection
-    print("[parallel func DEBUG] errorDetectedByRunner: \(String(describing: errorDetectedByRunner))")
-
     if errorDetectedByRunner == nil { // Only run the property if no error was detected
-        print("[parallel func DEBUG] Condition 'errorDetectedByRunner == nil' is TRUE. Entering property block.")
         do {
             try await property(executionResultAfterRunner)
-            print("[parallel func DEBUG] Property block executed successfully.")
+            print("[parallel func] Property block executed successfully.")
         } catch {
             print("Property '\(propertyName)' threw an error: \(error.localizedDescription)")
             finalErrorToReport = error // Update to the error from the property
             executionResultAfterRunner.overallError = error // Update the result struct
         }
     } else {
-        print("[parallel func DEBUG] Condition 'errorDetectedByRunner == nil' is FALSE. Skipping property block.")
+        print("[parallel func] Condition 'errorDetectedByRunner == nil' is FALSE. Skipping property block.")
     }
-
-    print("[parallel func] finalErrorToReport before shrinking logic: \(String(describing: finalErrorToReport))")
 
     if let actualFailureError = finalErrorToReport {
         // Report the failure and handle shrinking logic
