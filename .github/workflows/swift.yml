@@ -13,11 +13,13 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-22.04]
-        swift-version: ['5.9', '5.10']
+        swift-version: ['6.0']
         include:
-          # Add Swift 6.0 for macOS where it's more likely to be available
+          # Add older Swift versions for compatibility testing (may fail)
           - os: macos-latest
-            swift-version: '6.0'
+            swift-version: '5.10'
+          - os: ubuntu-22.04  
+            swift-version: '5.10'
 
     steps:
     - name: Checkout
@@ -47,14 +49,14 @@ jobs:
       run: swift test -v --enable-code-coverage
 
     - name: Generate code coverage report (macOS only)
-      if: runner.os == 'macOS' && matrix.swift-version == '5.10'
+      if: runner.os == 'macOS' && matrix.swift-version == '6.0'
       run: |
         xcrun llvm-cov export -format="lcov" \
           .build/debug/SwiftQCPackageTests.xctest/Contents/MacOS/SwiftQCPackageTests \
           -instr-profile .build/debug/codecov/default.profdata > coverage.lcov
 
     - name: Upload coverage to Codecov (macOS only)
-      if: runner.os == 'macOS' && matrix.swift-version == '5.10'
+      if: runner.os == 'macOS' && matrix.swift-version == '6.0'
       uses: codecov/codecov-action@v4
       with:
         file: coverage.lcov
@@ -82,7 +84,7 @@ jobs:
     - name: Setup Swift
       uses: swift-actions/setup-swift@v1
       with:
-        swift-version: '5.9'
+        swift-version: '6.0'
       continue-on-error: true
 
     - name: Check Swift Installation
