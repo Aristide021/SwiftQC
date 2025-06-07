@@ -6,7 +6,9 @@
 //  Copyright (c) 2025 Sheldon Aristide. All rights reserved.
 //
 import Foundation // For basic types
+#if canImport(XCTest)
 import XCTest    // Import XCTest to use XCTFail
+#endif
 
 // Protocol definition remains the same
 public protocol Reporter {
@@ -121,7 +123,11 @@ public struct XCTestReporter: Reporter {
         Minimal counterexample: \(input)
         Error: \(error)
         """
+        #if canImport(XCTest)
         XCTFail(message, file: file, line: line)
+        #else
+        fatalError(message)
+        #endif
     }
 }
 

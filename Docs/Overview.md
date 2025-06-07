@@ -17,12 +17,14 @@ SwiftQC provides a comprehensive suite of tools for property-based testing:
     *   Manages **deterministic seeding** for reproducible test failures.
     *   Performs automatic **shrinking** of inputs upon failure.
     *   Provides clear reporting of test outcomes.
-5.  **Stateful Testing (`StateModel` & Runner):**
+5.  **Stateful Testing (`StateModel` & `stateful` Runner):**
     *   Includes a `StateModel` protocol for defining models of stateful systems.
     *   Provides a **`stateful` runner** that generates sequences of commands, executes them against a model and a system-under-test (SUT), and checks for behavioral consistency.
-6.  **Parallel Testing (`ParallelModel` - Protocol Defined):**
+    *   Features complete sequence shrinking to find minimal failing command sequences.
+6.  **Parallel Testing (`ParallelModel` & `parallel` Runner):**
     *   Defines a `ParallelModel` protocol that extends `StateModel` for testing concurrent systems.
-    *   *(Runner implementation for parallel testing is planned for a future release).*
+    *   Provides a **`parallel` runner** with core concurrent execution, model-SUT divergence detection, and basic shrinking.
+    *   *(Advanced linearizability checking and sophisticated concurrency analysis features are planned for future releases).*
 7.  **Seamless Swift Testing Integration:**
     *   The property runner intelligently integrates with Swift Testing's `Issue` system. It uses `Testing.withKnownIssue` to suppress intermediate failures during shrinking and `Testing.Issue.record` to report only the final, minimal counterexample, ensuring clean and focused test reports.
 8.  **Modern Swift Design:** Built with Swift 6+ features in mind, including a focus on `Sendable` for concurrency safety and `async/await` for asynchronous properties.
@@ -69,7 +71,7 @@ Integrate SwiftQC into your project using Swift Package Manager.
 *   **`Arbitrary` Protocol:** Links a specific data type (its `Value`) to its default `Gen` and `Shrinker`. Conforming your types to `Arbitrary` makes them easily usable with `forAll`.
 *   **`forAll` Function:** The main entry point for running property tests. It takes a property (a closure) and, for types conforming to `Arbitrary`, automatically handles generation and shrinking. Specialized overloads provide ergonomic support for multiple inputs (tuples) and dictionaries.
 *   **`StateModel` Protocol & `stateful` Runner:** For testing systems whose behavior depends on a sequence of operations and internal state.
-*   **`ParallelModel` Protocol:** For designing tests for concurrent systems (runner TBD).
+*   **`ParallelModel` Protocol & `parallel` Runner:** For testing concurrent systems with basic execution and divergence detection (advanced linearizability features TBD).
 
 This overview should give you a good starting point. For more in-depth information on specific features, please refer to the other documents in the `Docs/` directory:
 

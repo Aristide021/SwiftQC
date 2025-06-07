@@ -5,13 +5,61 @@
 //  Created by Sheldon Aristide on 5/12/25.
 //  Copyright (c) 2025 Sheldon Aristide. All rights reserved.
 //
+
+// Conditional imports
+#if canImport(Testing)
 import Testing
+typealias SwiftTestingComment = Testing.Comment
+typealias SwiftTestingSourceLocation = Testing.SourceLocation
+typealias SwiftTestingIssue = Testing.Issue
+#endif
+
 import Gen
 
 public struct TestFailureError: Error, CustomStringConvertible, Sendable {
     public let message: String
     public var description: String { message }
     public init(message: String) { self.message = message }
+}
+
+// Helper function to handle shrink failure suppression
+private func suppressShrinkFailures<T>(
+    _ operation: () async throws -> T
+) async -> (result: Result<T, Error>, hasSuppressedFailures: Bool) {
+    #if canImport(Testing)
+    // Use Swift Testing's suppression mechanism
+    var capturedResult: Result<T, Error>!
+    
+    await withKnownIssue(isIntermittent: true) {
+        do {
+            let value = try await operation()
+            capturedResult = .success(value)
+        } catch {
+            capturedResult = .failure(error)
+        }
+    }
+    
+    let hasSuppressedFailures = capturedResult != nil && capturedResult.isFailure
+    return (capturedResult, hasSuppressedFailures)
+    #else
+    // CLI mode: silently capture failures without reporting
+    do {
+        let value = try await operation()
+        return (.success(value), false)
+    } catch {
+        return (.failure(error), true)
+    }
+    #endif
+}
+
+// Extension for Result convenience
+private extension Result {
+    var isFailure: Bool {
+        switch self {
+        case .success: return false
+        case .failure: return true
+        }
+    }
 }
 
 /// Runs a property-based test for a single `Arbitrary` input type.
@@ -21,7 +69,7 @@ public struct TestFailureError: Error, CustomStringConvertible, Sendable {
 /// 2. Runs the provided `property` closure with each input.
 /// 3. If the property fails (throws an error), it attempts to shrink the failing input
 ///    to a minimal counterexample using the `Input` type's `shrinker`.
-/// 4. Reports success or the minimal failure (integrating with Swift Testing issues).
+/// 4. Reports success or the minimal failure (integrating with Swift Testing when available).
 ///
 /// - Parameters:
 ///   - description: A textual description of the property being tested.
@@ -57,7 +105,7 @@ public func forAll<Input: Arbitrary>( // Arbitrary.Value is Sendable via protoco
     var xoshiroRng = Xoshiro(seed: effectiveSeed)
 
     for testIndex in 0..<count {
-        let currentInput: Input.Value = Input.gen.run(using: &xoshiroRng) // currentInput is Input.Value (Sendable)
+        let currentInput: Input.Value = Input.gen.run(using: &xoshiroRng)
         do {
             try await property(currentInput)
         } catch let error {
@@ -66,12 +114,10 @@ public func forAll<Input: Arbitrary>( // Arbitrary.Value is Sendable via protoco
             print("Error: \(error)")
             print("Starting shrinking...")
 
-            // currentInput IS Input.Value which IS Sendable.
-            // The shrinker S is for S.Value == Input.Value.
-            let shrinkResult = await shrink( // Value in shrink will be Input.Value
+            let shrinkResult = await shrink(
                 initialValue: currentInput,
                 initialError: error,
-                shrinker: Input.shrinker, // Input.shrinker is `any Shrinker<Input.Value>`
+                shrinker: Input.shrinker,
                 property: property,
                 description: description,
                 seedForRun: effectiveSeed,
@@ -86,11 +132,6 @@ public func forAll<Input: Arbitrary>( // Arbitrary.Value is Sendable via protoco
     return .succeeded(testsRun: count)
 }
 
-// shrink function requires its Value parameter to be Sendable.
-// S.Value (which is == Value) must also be Sendable. This is ensured because S is an `any Shrinker<Value>`
-// and `Shrinker`'s associated `Value` is not separately constrained beyond what `Value` itself is.
-// Since `forAll` calls this with `Input.Value` (which is `Sendable` via `Arbitrary.Value: Sendable`),
-// the `Value: Sendable` constraint here should be met.
 private func shrink<ValueParameter: Sendable, ShrinkerType: Shrinker>(
     initialValue: ValueParameter,
     initialError: Error,
@@ -113,13 +154,15 @@ private func shrink<ValueParameter: Sendable, ShrinkerType: Shrinker>(
         let candidates = shrinker.shrink(currentBestFailure)
         if candidates.isEmpty { break }
         for candidate in candidates {
-            var candidateFailed = false
             reporter.reportShrinkProgress(from: currentBestFailure, to: candidate)
-            await withKnownIssue(isIntermittent: true) {
-                do { try await property(candidate) } catch { candidateFailed = true }
+            
+            // Use our helper function to suppress intermediate failures
+            let (result, _) = await suppressShrinkFailures {
+                try await property(candidate)
             }
-            if candidateFailed {
-                 do { try await property(candidate) } catch let error { errorForCurrentBest = error }
+            
+            if case .failure(let error) = result {
+                errorForCurrentBest = error
                 print("  Shrinking '\(description)': found smaller failing candidate \(candidate) with error: \(errorForCurrentBest.localizedDescription)")
                 currentBestFailure = candidate
                 shrinksDone += 1
@@ -128,9 +171,11 @@ private func shrink<ValueParameter: Sendable, ShrinkerType: Shrinker>(
             }
         }
     }
+    
     print("Shrinking '\(description)': finished. Minimal failing input: \(currentBestFailure)")
     let finalErrorOnMinimalCandidate: Error
     var minimalCandidateUnexpectedlyPassed = false
+    
      do {
         try await property(currentBestFailure)
         finalErrorOnMinimalCandidate = errorForCurrentBest
@@ -138,17 +183,25 @@ private func shrink<ValueParameter: Sendable, ShrinkerType: Shrinker>(
      } catch let finalError {
          finalErrorOnMinimalCandidate = finalError
      }
+    
     reporter.reportFinalCounterexample(description: description, input: currentBestFailure, error: finalErrorOnMinimalCandidate, file: file, line: line)
+    
+    // Record the final issue conditionally
+    #if canImport(Testing)
     if minimalCandidateUnexpectedlyPassed {
-        Issue.record(errorForCurrentBest, Comment(rawValue: "Minimal candidate unexpectedly passed. Input: \(currentBestFailure). Seed: \(seedForRun)"), sourceLocation: SourceLocation(fileID: String(describing: file), filePath: String(describing: file), line: Int(line), column: 0))
+        SwiftTestingIssue.record(errorForCurrentBest, SwiftTestingComment(rawValue: "Minimal candidate unexpectedly passed. Input: \(currentBestFailure). Seed: \(seedForRun)"), sourceLocation: SwiftTestingSourceLocation(fileID: String(describing: file), filePath: String(describing: file), line: Int(line), column: 0))
     } else {
         var notes = [String]()
         if errorForCurrentBest.localizedDescription != finalErrorOnMinimalCandidate.localizedDescription && shrinksDone > 0 {
             notes.append("Note: Error on initial shrink differed: \(errorForCurrentBest.localizedDescription)")
         }
         let failureComment = "Minimal counterexample: \(currentBestFailure). Seed: \(seedForRun)." + (notes.isEmpty ? "" : "\n" + notes.joined(separator: "\n"))
-        Issue.record(finalErrorOnMinimalCandidate, Comment(rawValue: failureComment), sourceLocation: SourceLocation(fileID: String(describing: file), filePath: String(describing: file), line: Int(line), column: 0))
+        SwiftTestingIssue.record(finalErrorOnMinimalCandidate, SwiftTestingComment(rawValue: failureComment), sourceLocation: SwiftTestingSourceLocation(fileID: String(describing: file), filePath: String(describing: file), line: Int(line), column: 0))
     }
+    #else
+    // In CLI mode, we just return the result - the error is already printed via reporter
+    #endif
+    
     return .falsified(value: currentBestFailure, error: finalErrorOnMinimalCandidate, shrinks: shrinksDone, seed: seedForRun)
 }
 

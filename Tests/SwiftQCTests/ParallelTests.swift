@@ -291,14 +291,14 @@ class ParallelTests: XCTestCase {
     func testParallel_ModelSUTDivergence() async {
         let sut = DivergentSUT()
         await sut.reset()
-        await sut.setDivergeOnGetValueAfterIncrements(1)
+        await sut.setDivergeOnGetValueAfterIncrements(0) // Diverge on ANY getValue
 
         let sutFactory: @Sendable () async -> DivergentSUT = { sut }
         let propertyBlockEnteredWhenErrorExpected = ManagedAtomic<Bool>(false)
 
         let result = await SwiftQC.parallel(
             "Parallel Model-SUT Divergence",
-            threads: 2, forks: 3, 
+            threads: 2, forks: 5, // More operations to ensure getValue happens
             modelType: ModelForDivergentSUT.self,
             sutFactory: sutFactory
         ) { @Sendable (executionResult: ParallelExecutionResult<ModelForDivergentSUT>) in

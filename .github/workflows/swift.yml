@@ -1,0 +1,108 @@
+name: Swift CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Test Swift ${{ matrix.swift-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        swift-version: ['5.9', '5.10', '6.0']
+        exclude:
+          # Swift 6.0 may not be available on all platforms yet
+          - os: ubuntu-latest
+            swift-version: '6.0'
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Swift (Linux)
+      if: runner.os == 'Linux'
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: ${{ matrix.swift-version }}
+
+    - name: Setup Swift (macOS)
+      if: runner.os == 'macOS'
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: ${{ matrix.swift-version }}
+
+    - name: Build
+      run: swift build -v
+
+    - name: Run tests
+      run: swift test -v --enable-code-coverage
+
+    - name: Generate code coverage report (macOS only)
+      if: runner.os == 'macOS' && matrix.swift-version == '6.0'
+      run: |
+        xcrun llvm-cov export -format="lcov" \
+          .build/debug/SwiftQCPackageTests.xctest/Contents/MacOS/SwiftQCPackageTests \
+          -instr-profile .build/debug/codecov/default.profdata > coverage.lcov
+
+    - name: Upload coverage to Codecov (macOS only)
+      if: runner.os == 'macOS' && matrix.swift-version == '6.0'
+      uses: codecov/codecov-action@v3
+      with:
+        file: coverage.lcov
+        fail_ci_if_error: false
+
+  lint:
+    name: SwiftLint
+    runs-on: macos-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: SwiftLint
+      uses: norio-nomura/action-swiftlint@3.2.1
+      with:
+        args: --strict
+
+  documentation:
+    name: Documentation Build
+    runs-on: macos-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: '6.0'
+
+    - name: Build Documentation
+      run: |
+        swift package --allow-writing-to-directory docs \
+          generate-documentation --target SwiftQC \
+          --disable-indexing \
+          --transform-for-static-hosting \
+          --hosting-base-path SwiftQC \
+          --output-path docs
+
+    - name: Upload Documentation
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: docs
+
+  deploy-docs:
+    name: Deploy Documentation
+    if: github.ref == 'refs/heads/main'
+    needs: documentation
+    runs-on: macos-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2

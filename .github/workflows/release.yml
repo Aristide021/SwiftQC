@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: macos-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: '6.0'
+
+    - name: Build
+      run: swift build -c release
+
+    - name: Run tests
+      run: swift test -c release
+
+    - name: Validate Package
+      run: swift package diagnose
+
+  create-release:
+    name: Create GitHub Release
+    needs: validate
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Extract release notes
+      id: extract-release-notes
+      run: |
+        # Extract version from tag
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+        # Create release notes from git log
+        echo "# Release $VERSION" > release-notes.md
+        echo "" >> release-notes.md
+        
+        # Get commits since last tag
+        LAST_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+        if [ -n "$LAST_TAG" ]; then
+          echo "## Changes since $LAST_TAG" >> release-notes.md
+          git log --pretty=format:"- %s (%h)" $LAST_TAG..HEAD >> release-notes.md
+        else
+          echo "## Initial Release" >> release-notes.md
+          echo "First release of SwiftQC property-based testing library" >> release-notes.md
+        fi
+        
+        echo "" >> release-notes.md
+        echo "## Features" >> release-notes.md
+        echo "- Property-based testing with automatic shrinking" >> release-notes.md
+        echo "- Stateful testing for command sequences" >> release-notes.md
+        echo "- Parallel testing for concurrent systems" >> release-notes.md
+        echo "- Swift Testing and XCTest integration" >> release-notes.md
+        echo "- Comprehensive built-in Arbitrary types" >> release-notes.md
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: SwiftQC v${{ steps.extract-release-notes.outputs.version }}
+        body_path: release-notes.md
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+
+  notify:
+    name: Notify Release
+    needs: create-release
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Notification
+      run: |
+        echo "🎉 SwiftQC v${{ steps.version.outputs.version }} has been released!"
+        echo "📦 Package URL: https://github.com/${{ github.repository }}"
+        echo "📖 Documentation: https://${{ github.repository_owner }}.github.io/SwiftQC/"

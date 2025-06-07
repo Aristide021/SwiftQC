@@ -1,2 +1,78 @@
+disabled_rules:
+  - trailing_whitespace # Allow trailing whitespace in documentation
+  - line_length # Swift Testing syntax can be verbose
+
+opt_in_rules:
+  - array_init
+  - closure_spacing
+  - contains_over_filter_count
+  - empty_count
+  - explicit_init
+  - fatal_error_message
+  - first_where
+  - force_unwrapping
+  - last_where
+  - literal_expression_end_indentation
+  - modifier_order
+  - multiline_arguments
+  - multiline_function_chains
+  - multiline_parameters
+  - operator_usage_whitespace
+  - overridden_super_call
+  - redundant_nil_coalescing
+  - redundant_type_annotation
+  - sorted_first_last
+  - vertical_parameter_alignment_on_call
+
+included:
+  - Sources
+  - Tests
+
 excluded:
-  - Package.swift
+  - .build
+  - .swiftpm
+  - docs
+
+line_length:
+  warning: 120
+  error: 150
+
+type_body_length:
+  warning: 500
+  error: 700
+
+file_length:
+  warning: 500
+  error: 800
+
+function_body_length:
+  warning: 50
+  error: 100
+
+cyclomatic_complexity:
+  warning: 10
+  error: 20
+
+nesting:
+  type_level:
+    warning: 2
+    error: 3
+
+identifier_name:
+  min_length:
+    warning: 2
+    error: 1
+  max_length:
+    warning: 60
+    error: 80
+  allowed_symbols: ["_"]
+
+force_unwrapping:
+  severity: error
+
+custom_rules:
+  no_print:
+    name: "No Print Statements"
+    regex: '(?<!\/\/.*|\/\*[\s\S]*?\*\/)print\('
+    message: "Use proper logging instead of print statements"
+    severity: warning

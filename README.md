@@ -7,7 +7,8 @@ It provides:
 - Pluggable Shrinkers (`Shrinker`, `Sendable`) for minimal counterexamples
 - An `Arbitrary` protocol (`Sendable`) tying types (`Value: Sendable`) to their default `(Gen, Shrinker)`
 - A Property Runner (`forAll`) with automatic shrinking, seed handling, and seamless **Swift Testing issue integration**
-- Protocol definitions for Stateful (`StateModel`) and Parallel (`ParallelModel`) testing **(Runners TBD)**
+- **Stateful testing** via `StateModel` protocol and `stateful()` runner with full sequence shrinking support ✅
+- **Parallel testing** via `ParallelModel` protocol and `parallel()` runner (core functionality complete, advanced linearizability features TBD)
 
 ## Installation
 
@@ -168,4 +169,4 @@ Explore the **`Docs/` directory** for comprehensive documentation:
 
 ## License
 
-[Your License]
+SwiftQC is released under the MIT License. See [LICENSE](LICENSE) for details.

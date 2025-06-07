@@ -40,7 +40,8 @@ let package = Package(
       name: "SwiftQCCLI",
       dependencies: [
         "SwiftQC",
-        .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        .product(name: "Gen", package: "swift-gen"),
+        .product(name: "ArgumentParser", package: "swift-argument-parser")
       ],
       path: "Sources/SwiftQCCLI"
     ),
