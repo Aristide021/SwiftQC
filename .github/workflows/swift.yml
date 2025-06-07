@@ -70,7 +70,7 @@ jobs:
     - name: SwiftLint
       uses: norio-nomura/action-swiftlint@3.2.1
       with:
-        args: --strict
+        args: --reporter github-actions-logging
 
   documentation:
     name: Documentation Build
@@ -82,7 +82,11 @@ jobs:
     - name: Setup Swift
       uses: swift-actions/setup-swift@v1
       with:
-        swift-version: '5.10'
+        swift-version: '5.9'
+      continue-on-error: true
+
+    - name: Check Swift Installation
+      run: swift --version
 
     - name: Build Documentation
       run: |

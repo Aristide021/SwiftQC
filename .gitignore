@@ -4,6 +4,7 @@
 .swiftpm/
 .vscode/
 .xcodeproj
+Package.resolved
 
 *.txt
 
