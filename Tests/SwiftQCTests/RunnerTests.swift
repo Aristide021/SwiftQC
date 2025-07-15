@@ -191,7 +191,7 @@ final class RunnerTests: XCTestCase {
                     throw DictTestError(message: "Failed with targetKey: \(dict)")
                 }
             }
-            if dict.isEmpty && Int.random(in: 0...2) == 0 { return }
+            if dict.isEmpty { return }
             if dict.count > 2 && dict[RunnerTests.failingDictTargetKey] == nil {
                 throw DictTestError(message: "Fallback failure for shrinking test: \(dict)")
             }
@@ -200,7 +200,7 @@ final class RunnerTests: XCTestCase {
         let result = await forAll(
             "Ergonomic Dictionary Fails and Shrinks",
             count: 50,
-            seed: nil,
+            seed: 12345,
             reporter: spyReporter,
             FailingDictKeyArbitrary.self,   // keyType, its Value is MySendableKey
             FailingDictValueArbitrary.self, // valueType, its Value is MySendableValue

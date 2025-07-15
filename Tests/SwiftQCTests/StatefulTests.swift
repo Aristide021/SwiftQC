@@ -38,9 +38,13 @@ class RealCounterSUT { // REMOVED @unchecked Sendable, rely on @MainActor
 
 @MainActor
 class BuggyRealCounterSUT: RealCounterSUT { // Inherits @MainActor
+    private var callCount = 0
+    
     override func getValue() -> Int {
         let realValue = super.getValue() // Call to super is sync within the same actor
-        if realValue > 2 && Int.random(in: 0..<3) == 0 {
+        callCount += 1
+        // Make it deterministic: fail every 3rd call when value > 2
+        if realValue > 2 && callCount % 3 == 0 {
             print("[BUGGY SUT:\(ObjectIdentifier(self))] getValue returning INCORRECT value (\(realValue + 5)) instead of \(realValue)")
             return realValue + 5
         }
