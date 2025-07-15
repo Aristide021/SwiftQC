@@ -385,7 +385,6 @@ private func executeParallelRunInternal<Model: ParallelModel, SUT_Runner>(
                 break // Found the first critical nil response
             }
         }
-        }
     }
     
     // If overallErrorInternal is still a "Model Inconsistency" error, that's fine, it means no other SUT errors or divergences occurred.

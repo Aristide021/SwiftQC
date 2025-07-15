@@ -136,7 +136,7 @@ struct LenientSimpleParallelCounterModel: ParallelModel {
             }
         }
     }
-    static func runCommandMonad<A: Sendable>(_ action: @escaping CommandMonad<A>) -> IO<A> { IO(action) }
+    static func runCommandMonad<A: Sendable>(_ action: @escaping CommandMonad<A>) -> IOMonad<A> { IOMonad(action) }
     static func concretizeCommand(_ cmd: CommandVar, resolver: @Sendable (Var<ReferenceType>) -> ReferenceType) -> CommandConcrete { cmd }
     static func areResponsesEquivalent(symbolicResponse: ResponseVar, concreteResponse: ResponseConcrete, resolver: @Sendable (Var<ReferenceType>) -> ReferenceType) -> Bool {
         switch (symbolicResponse, concreteResponse) { // Lenient for getValue
@@ -176,7 +176,7 @@ struct ModelForErrorSUT: ParallelModel {
             }
         }
     }
-    static func runCommandMonad<A: Sendable>(_ action: @escaping CommandMonad<A>) -> IO<A> { IO(action) }
+    static func runCommandMonad<A: Sendable>(_ action: @escaping CommandMonad<A>) -> IOMonad<A> { IOMonad(action) }
     static func concretizeCommand(_ cmd: CommandVar, resolver: @Sendable (Var<ReferenceType>) -> ReferenceType) -> CommandConcrete { cmd }
     // Strict equivalence for when no error is thrown
     static func areResponsesEquivalent(symbolicResponse: ResponseVar, concreteResponse: ResponseConcrete, resolver: @Sendable (Var<ReferenceType>) -> ReferenceType) -> Bool { symbolicResponse == concreteResponse }
@@ -206,7 +206,7 @@ struct ModelForDivergentSUT: ParallelModel {
             }
         }
     }
-    static func runCommandMonad<A: Sendable>(_ action: @escaping CommandMonad<A>) -> IO<A> { IO(action) }
+    static func runCommandMonad<A: Sendable>(_ action: @escaping CommandMonad<A>) -> IOMonad<A> { IOMonad(action) }
     static func concretizeCommand(_ cmd: CommandVar, resolver: @Sendable (Var<ReferenceType>) -> ReferenceType) -> CommandConcrete { cmd }
     static func areResponsesEquivalent(symbolicResponse: ResponseVar, concreteResponse: ResponseConcrete, resolver: @Sendable (Var<ReferenceType>) -> ReferenceType) -> Bool { symbolicResponse == concreteResponse }
 }
