@@ -89,13 +89,19 @@ jobs:
       run: |
         swift package --allow-writing-to-directory docs \
           generate-documentation --target SwiftQC \
-          --disable-indexing \
           --transform-for-static-hosting \
           --hosting-base-path SwiftQC \
           --output-path docs
         
     - name: Add .nojekyll file
       run: touch docs/.nojekyll
+
+    - name: Create documentation index if missing
+      run: |
+        if [ ! -f docs/data/documentation.json ]; then
+          echo "Creating missing documentation.json index file"
+          echo '{"schemaVersion":{"major":0,"minor":3,"patch":0},"identifier":{"url":"doc://SwiftQC","interfaceLanguage":"swift"},"kind":"symbol","metadata":{"title":"SwiftQC","role":"collection","roleHeading":"Framework","modules":[{"name":"SwiftQC"}]},"sections":[{"kind":"hero","title":"SwiftQC","content":[{"type":"text","text":"A Swift property-based testing framework"}]}],"references":{"doc://SwiftQC":{"type":"topic","title":"SwiftQC","url":"/documentation/swiftqc"}}}' > docs/data/documentation.json
+        fi
 
     - name: Debug - List docs contents
       run: |
