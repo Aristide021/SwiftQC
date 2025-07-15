@@ -100,7 +100,7 @@ extension SwiftQCCLI {
                 count: count, 
                 seed: seed, 
                 reporter: reporter,
-                Int.self,
+                types: Int.self,
                 Int.self
             ) { (a: Int, b: Int) in
                 assert(a + b == b + a, "Addition should be commutative")
@@ -113,7 +113,7 @@ extension SwiftQCCLI {
                 count: count, 
                 seed: seed, 
                 reporter: reporter,
-                String.self,
+                types: String.self,
                 String.self
             ) { (s1: String, s2: String) in
                 let concatenated = s1 + s2
@@ -177,7 +177,7 @@ extension SwiftQCCLI {
                 count: count, 
                 seed: seed, 
                 reporter: reporter,
-                Int.self,
+                types: Int.self,
                 Int.self
             ) { (a: Int, b: Int) in
                 assert(a + b == b + a)
@@ -189,7 +189,7 @@ extension SwiftQCCLI {
                 count: count, 
                 seed: seed, 
                 reporter: reporter,
-                Int.self,
+                types: Int.self,
                 Int.self,
                 Int.self
             ) { (a: Int, b: Int, c: Int) in
@@ -219,7 +219,7 @@ extension SwiftQCCLI {
                 count: count, 
                 seed: seed, 
                 reporter: reporter,
-                String.self,
+                types: String.self,
                 String.self
             ) { (s1: String, s2: String) in
                 assert((s1 + s2).count == s1.count + s2.count)
@@ -440,13 +440,13 @@ extension SwiftQCCLI {
                     
                     switch propName {
                     case "arithmetic", "math":
-                        let result = await forAll("Quick arithmetic test", count: 20, seed: currentSeed, Int.self, Int.self) { (a: Int, b: Int) in
+                        let result = await forAll("Quick arithmetic test", count: 20, seed: currentSeed, types: Int.self, Int.self) { (a: Int, b: Int) in
                             assert(a + b == b + a, "Addition should be commutative")
                         }
                         printInteractiveResult(result)
                         
                     case "strings":
-                        let result = await forAll("Quick string test", count: 20, seed: currentSeed, String.self, String.self) { (s1: String, s2: String) in
+                        let result = await forAll("Quick string test", count: 20, seed: currentSeed, types: String.self, String.self) { (s1: String, s2: String) in
                             assert((s1 + s2).count == s1.count + s2.count, "Concatenation length")
                         }
                         printInteractiveResult(result)

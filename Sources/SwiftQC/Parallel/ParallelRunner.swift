@@ -9,7 +9,9 @@
 // File: Sources/SwiftQC/Parallel/ParallelRunner.swift
 
 import Gen
+#if canImport(Testing)
 import Testing // For Issue.record, Comment, SourceLocation
+#endif
 import Atomics
 
 public protocol DefaultableResponse {

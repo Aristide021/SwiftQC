@@ -205,6 +205,43 @@ private func shrink<ValueParameter: Sendable, ShrinkerType: Shrinker>(
     return .falsified(value: currentBestFailure, error: finalErrorOnMinimalCandidate, shrinks: shrinksDone, seed: seedForRun)
 }
 
+/// Runs a property-based test with type inference from the closure parameter.
+///
+/// This ergonomic overload infers the `Arbitrary` type from the closure parameter type,
+/// eliminating the need to explicitly specify the type in most cases.
+///
+/// - Parameters:
+///   - description: A textual description of the property being tested.
+///   - count: The number of successful test iterations to run. Defaults to 100.
+///   - seed: An optional fixed seed for the random number generator for reproducibility.
+///   - reporter: A `Reporter` instance. Defaults to `ConsoleReporter`.
+///   - file: The file where the test is defined (automatically captured).
+///   - line: The line where the test is defined (automatically captured).
+///   - property: An async closure that takes a value and throws an error if the property fails.
+///               The parameter type must conform to `Arbitrary` and `Sendable`.
+/// - Returns: A `TestResult` indicating whether the test succeeded or failed.
+@_disfavoredOverload
+public func forAll<T>(
+  _ description: String,
+  count: Int = 100,
+  seed: UInt64? = nil,
+  reporter: Reporter = ConsoleReporter(),
+  file: StaticString = #file,
+  line: UInt = #line,
+  _ property: @escaping (T) async throws -> Void
+) async -> TestResult<T> where T: Arbitrary, T.Value == T {
+    return await forAll(
+        description,
+        count: count,
+        seed: seed,
+        reporter: reporter,
+        file: file,
+        line: line,
+        property,
+        T.self
+    )
+}
+
 /// Runs a property-based test for two `Arbitrary` input types.
 ///
 /// This overload provides an ergonomic way to test properties involving two inputs.
@@ -228,7 +265,7 @@ public func forAll<A: Arbitrary, B: Arbitrary>(
     reporter: Reporter = ConsoleReporter(),
     file: StaticString = #file,
     line: UInt = #line,
-    _ typeA: A.Type = A.self,
+    types typeA: A.Type = A.self,
     _ typeB: B.Type = B.self,
     _ property: @escaping (A.Value, B.Value) async throws -> Void
 ) async -> TestResult<(A.Value, B.Value)> {
@@ -266,7 +303,7 @@ public func forAll<A: Arbitrary, B: Arbitrary, C: Arbitrary>(
     reporter: Reporter = ConsoleReporter(),
     file: StaticString = #file,
     line: UInt = #line,
-    _ typeA: A.Type = A.self,
+    types typeA: A.Type = A.self,
     _ typeB: B.Type = B.self,
     _ typeC: C.Type = C.self,
     _ property: @escaping (A.Value, B.Value, C.Value) async throws -> Void

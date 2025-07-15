@@ -1,5 +1,6 @@
 import SwiftQC
 import Testing
+import Gen
 
 // MARK: - Basic Property Testing Examples
 

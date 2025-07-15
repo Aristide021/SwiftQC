@@ -281,7 +281,7 @@ final class RunnerTests: XCTestCase {
             "Ergonomic Two Params Always Passes",
             count: testCount,
             reporter: spyReporter,
-            Int.self,    // typeA
+            types: Int.self,    // typeA
             String.self  // typeB
         ) { (i: Int, s: String) in
             propertyCalledCount += 1
@@ -303,7 +303,7 @@ final class RunnerTests: XCTestCase {
         let result = await forAll(
             "Ergonomic Two Params Fails and Shrinks",
             count: 3, reporter: spyReporter,
-            FailingIntForTuple.self,    // typeA
+            types: FailingIntForTuple.self,    // typeA
             FailingStringForTuple.self  // typeB
         ) { (val1: Int, val2: String) in
             try propertyToTest(val1, val2)

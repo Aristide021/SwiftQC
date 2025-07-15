@@ -7,7 +7,9 @@
 //
 
 import Gen
+#if canImport(Testing)
 import Testing // For Issue.record, Comment, SourceLocation
+#endif
 
 // Define a custom error type for sequence failures
 struct StatefulTestSequenceFailure<Model: StateModel>: Error, Sendable where
@@ -327,7 +329,9 @@ private func shrinkStatefulSequence<Model: StateModel, SUT_Runner>(
     )
     
     let failureComment = "Minimal failing command sequence for '\(propertyName)' (length \(currentBestFailureSequence.steps.count)). Seed: \(originalSeed)."
+    #if canImport(Testing)
     Issue.record(errorForCurrentBest, Comment(rawValue: failureComment), sourceLocation: SourceLocation(fileID: String(describing: file), filePath: String(describing: file), line: Int(line), column: 0))
+    #endif
     
     return .falsified(value: currentBestFailureSequence, error: errorForCurrentBest, shrinks: shrinksDone, seed: originalSeed)
 }

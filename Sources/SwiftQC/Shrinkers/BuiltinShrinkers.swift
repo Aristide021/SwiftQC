@@ -58,6 +58,42 @@ public enum Shrinkers {
   /// Shrinks a `Decimal` towards zero and other simple values.
   /// Refers to DecimalShrinker defined in Decimal+Arbitrary.swift
   public static var decimal: DecimalShrinker { DecimalShrinker() }
+  
+  // MARK: - Convenient Combinators
+  
+  /// Creates a shrinker that maps values through a transformation.
+  public static func map<From, To>(
+    from shrinker: any Shrinker<From>,
+    transform: @escaping @Sendable (From) -> To,
+    reverse: @escaping @Sendable (To) -> From
+  ) -> MappedShrinker<From, To> {
+    MappedShrinker(
+      baseShrinker: shrinker,
+      transform: transform,
+      reverse: reverse
+    )
+  }
+  
+  /// Creates a shrinker for tuples of two values.
+  public static func tuple<A, B>(
+    _ first: any Shrinker<A>,
+    _ second: any Shrinker<B>
+  ) -> TupleShrinker<A, B> {
+    TupleShrinker(first: first, second: second)
+  }
+  
+  /// Creates a shrinker that doesn't shrink (returns empty array).
+  public static func noShrink<T>() -> NoShrinkShrinker<T> {
+    NoShrinkShrinker<T>()
+  }
+  
+  /// Creates a shrinker by combining multiple shrinkers.
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+  public static func combine<T>(
+    _ shrinkers: [any Shrinker<T>]
+  ) -> CombinedShrinker<T> {
+    CombinedShrinker(shrinkers: shrinkers)
+  }
 }
 
 // MARK: - Definitions for Truly "Built-in" Generic Shrinkers
@@ -164,6 +200,99 @@ public struct FloatShrinker: Shrinker { /* ... implementation ... */
         if abs(value) > 1.0 { let closer = value > 0 ? value - 1.0 : value + 1.0; if closer.isFinite && closer != 0.0 && closer != half { shrunkValues.append(closer) } }
         let simple: [Float] = [1.0, -1.0]; for s in simple { if abs(s) < abs(value) && value != s && !shrunkValues.contains(s) { shrunkValues.append(s) } }
         return Array(Set(shrunkValues)).sorted { abs($0) < abs($1) }
+    }
+}
+
+// MARK: - Combinator Shrinker Implementations
+
+/// A shrinker that maps values through a transformation.
+public struct MappedShrinker<From, To>: Shrinker {
+    public typealias Value = To
+    
+    private let baseShrinker: any Shrinker<From>
+    private let transform: @Sendable (From) -> To
+    private let reverse: @Sendable (To) -> From
+    
+    public init(
+        baseShrinker: any Shrinker<From>,
+        transform: @escaping @Sendable (From) -> To,
+        reverse: @escaping @Sendable (To) -> From
+    ) {
+        self.baseShrinker = baseShrinker
+        self.transform = transform
+        self.reverse = reverse
+    }
+    
+    public func shrink(_ value: To) -> [To] {
+        let originalValue = reverse(value)
+        return baseShrinker.shrink(originalValue).map(transform)
+    }
+}
+
+/// A shrinker for tuples of two values.
+public struct TupleShrinker<A, B>: Shrinker {
+    public typealias Value = (A, B)
+    
+    private let firstShrinker: any Shrinker<A>
+    private let secondShrinker: any Shrinker<B>
+    
+    public init(first: any Shrinker<A>, second: any Shrinker<B>) {
+        self.firstShrinker = first
+        self.secondShrinker = second
+    }
+    
+    public func shrink(_ value: (A, B)) -> [(A, B)] {
+        var results: [(A, B)] = []
+        
+        // Shrink first component
+        for shrunkFirst in firstShrinker.shrink(value.0) {
+            results.append((shrunkFirst, value.1))
+        }
+        
+        // Shrink second component
+        for shrunkSecond in secondShrinker.shrink(value.1) {
+            results.append((value.0, shrunkSecond))
+        }
+        
+        // Shrink both components
+        for shrunkFirst in firstShrinker.shrink(value.0) {
+            for shrunkSecond in secondShrinker.shrink(value.1) {
+                results.append((shrunkFirst, shrunkSecond))
+            }
+        }
+        
+        return results
+    }
+}
+
+/// A shrinker that doesn't shrink anything.
+public struct NoShrinkShrinker<T>: Shrinker {
+    public typealias Value = T
+    
+    public init() {}
+    
+    public func shrink(_ value: T) -> [T] {
+        return []
+    }
+}
+
+/// A shrinker that combines multiple shrinkers.
+@available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+public struct CombinedShrinker<T>: Shrinker {
+    public typealias Value = T
+    
+    private let shrinkers: [any Shrinker<T>]
+    
+    public init(shrinkers: [any Shrinker<T>]) {
+        self.shrinkers = shrinkers
+    }
+    
+    public func shrink(_ value: T) -> [T] {
+        var results: [T] = []
+        for shrinker in shrinkers {
+            results.append(contentsOf: shrinker.shrink(value))
+        }
+        return results
     }
 }
 

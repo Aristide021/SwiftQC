@@ -12,14 +12,33 @@ It provides:
 
 ## Installation
 
-Add SwiftQC to your project via Swift Package Manager:
+### 📦 Library (Swift Package Manager)
+
+Add SwiftQC to your project:
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/your-repo/SwiftQC.git", .upToNextMajor(from: "1.0.0")),
+.package(url: "https://github.com/sheldon-aristide/SwiftQC.git", from: "1.0.0"),
 ```
 
 Or in Xcode: **File → Add Packages…** and enter the repository URL.
+
+### 🔧 CLI Tool (Development Use)
+
+⚠️ **Current Limitation**: CLI requires full Xcode due to Swift Testing dependencies.
+
+```bash
+# Clone and run locally (recommended for now)
+git clone https://github.com/sheldon-aristide/SwiftQC.git
+cd SwiftQC
+swift run SwiftQCCLI --help
+swift run SwiftQCCLI run --count 100
+swift run SwiftQCCLI interactive
+```
+
+**Note**: We recommend using the library directly in your projects rather than the CLI for production use.
+
+📋 **See [INSTALL.md](INSTALL.md) for detailed installation options and troubleshooting.**
 
 ## Quick Start
 
