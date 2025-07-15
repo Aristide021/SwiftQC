@@ -97,6 +97,23 @@ jobs:
     - name: Add .nojekyll file
       run: touch docs/.nojekyll
 
+    - name: Debug - List docs contents
+      run: |
+        echo "=== Docs directory structure ==="
+        ls -la docs/
+        echo "=== Documentation subfolder ==="
+        ls -la docs/documentation/ 2>/dev/null || echo "No documentation folder"
+        echo "=== Looking for index.html ==="
+        find docs -name "index.html" -type f
+        echo "=== Checking .nojekyll ==="
+        ls -la docs/.nojekyll
+        echo "=== Sample of docs content (first 3 lines) ==="
+        head -3 docs/index.html 2>/dev/null || echo "No index.html found"
+        echo "=== Check base path in HTML ==="
+        grep -o 'baseUrl = "[^"]*"' docs/index.html 2>/dev/null || echo "No baseUrl found"
+        echo "=== Check for asset paths ==="
+        grep -o 'src="[^"]*"' docs/index.html | head -3 2>/dev/null || echo "No src paths found"
+
     - name: Upload Documentation
       if: github.ref == 'refs/heads/main'
       uses: actions/upload-pages-artifact@v3
