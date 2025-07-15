@@ -1,6 +1,6 @@
 # SwiftQCCLI - Property-Based Testing Command Line Interface
 
-SwiftQCCLI is a command-line interface for exploring and demonstrating property-based testing concepts using the SwiftQC framework.
+SwiftQCCLI is a command line interface for exploring and demonstrating property-based testing concepts using the SwiftQC framework.
 
 ## Features
 

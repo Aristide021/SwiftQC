@@ -44,7 +44,7 @@ public struct ConsoleReporter: Reporter {
     }
 }
 
-// XCTest integration - MODIFIED
+// XCTest integration
 public struct XCTestReporter: Reporter {
     public init() {} // Add a public initializer
 

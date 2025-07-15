@@ -194,4 +194,3 @@ swift package reset
 
 ---
 
-**Note**: Replace `Aristide021/SwiftQC` with your actual GitHub username/repository path when publishing.

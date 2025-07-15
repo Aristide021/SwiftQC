@@ -99,3 +99,4 @@ jobs:
         echo "🎉 SwiftQC v${{ steps.version.outputs.version }} has been released!"
         echo "📦 Package URL: https://github.com/${{ github.repository }}"
         echo "📖 Documentation: https://Aristide021.github.io/SwiftQC/"
+

@@ -1,6 +1,6 @@
 # SwiftQC
 
-**SwiftQC** is a **Swift 6+** property-based testing library designed to unify concepts from QuickCheck, Hedgehog, and modern Swift testing into a single, cohesive framework.
+**SwiftQC** is a **Swift 6+** property-based testing library designed to unify concepts from QuickCheck, Hedgehog, and modern Swift testing into a single, cohesive framework. 
 
 It provides:
 - Composable Generators (`Gen` via **PointFree's `swift-gen`**)

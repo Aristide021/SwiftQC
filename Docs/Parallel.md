@@ -55,7 +55,7 @@ This runner:
 - Model-SUT divergence detection and error propagation  
 - Basic shrinking (removing entire operations from failing sequences)
 - Reference management for commands that create/return references
-- Comprehensive test coverage
+- Comprehensive tests coverage
 
 **🚧 Advanced Features (TBD):**
 - **Individual command shrinking**: Using `Model.shrinkParallelCommand()` to simplify individual commands within failing sequences

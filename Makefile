@@ -1,4 +1,4 @@
-# SwiftQC CLI Makefile
+# SwiftQCCLI Makefile
 # Provides convenient targets for building and running the CLI with XCTest libraries
 
 # Xcode paths for XCTest libraries

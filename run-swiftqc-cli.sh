@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SwiftQC CLI Runner with XCTest Libraries
+# SwiftQC CLI Runner with XCTest Libraries 
 # This script sets up the necessary library paths to run SwiftQC CLI
 # Note: We renamed main.swift to SwiftQCCLI.swift to avoid @main conflicts
 

@@ -4,7 +4,7 @@ Thank you for your interest in contributing to SwiftQC! This document provides g
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
+By participating in this project, you agree to be respectful, constructive, and collaborative. We are committed to providing a welcoming and inclusive environment for all contributors.
 
 ## How to Contribute
 
