@@ -202,4 +202,4 @@ Explore the **`Docs/` directory** for comprehensive documentation:
 
 ## License
 
-SwiftQC is released under the MIT License. See [LICENSE](LICENSE) for details.
+SwiftQC is released under the Apache License 2.0. See [LICENSE](LICENSE) for details.
