@@ -155,6 +155,20 @@ struct Point: Arbitrary, Sendable {
 
 See [Arbitrary.md](Docs/Arbitrary.md) for detailed instructions and examples.
 
+## Examples
+
+Explore **hands-on examples** in the [`Examples/` directory](Examples/):
+
+- **[BasicUsage](Examples/BasicUsage/)** - Property testing fundamentals, custom types, shrinking
+- **[StatefulExample](Examples/StatefulExample/)** - Testing state machines, command sequences  
+- **[ParallelExample](Examples/ParallelExample/)** - Concurrent testing, race condition detection
+
+Each example is a complete Swift package you can build and run:
+
+```bash
+cd Examples/BasicUsage && swift test
+```
+
 ## Documentation
 
 Explore the **`Docs/` directory** for comprehensive documentation:
