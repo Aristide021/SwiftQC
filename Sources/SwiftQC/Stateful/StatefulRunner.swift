@@ -78,7 +78,7 @@ public func stateful<Model: StateModel, SUT_Runner>(
 
         switch generationResult {
         case .success(let executedSequence):
-            if executedSequence.steps.count > 0 {
+            if !executedSequence.steps.isEmpty {
                  print("  [\(sequenceIndex)] Sequence completed successfully with \(executedSequence.steps.count) commands.")
             } else if maxCommandsInSequence > 0 {
                  print("  [\(sequenceIndex)] Sequence completed with no commands executed (possibly all preconditions failed).")
