@@ -83,6 +83,9 @@ jobs:
           --transform-for-static-hosting \
           --hosting-base-path SwiftQC \
           --output-path docs
+        
+    - name: Add .nojekyll file
+      run: touch docs/.nojekyll
 
     - name: Upload Documentation
       if: github.ref == 'refs/heads/main'
