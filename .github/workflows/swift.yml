@@ -28,18 +28,28 @@ jobs:
     - name: Check Swift Installation
       run: swift --version
 
+    - name: Cache Swift build
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          ~/.cache/org.swift.swiftpm
+        key: ${{ runner.os }}-swift-${{ matrix.swift-version }}-${{ hashFiles('Package.swift', 'Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-${{ matrix.swift-version }}-
+
     - name: Build
-      run: swift build -v
+      run: swift build
 
     - name: Run tests
-      run: swift test -v --enable-code-coverage
+      run: swift test --enable-code-coverage
 
     - name: Generate code coverage report (macOS only)
       if: runner.os == 'macOS' && matrix.swift-version == '6.0'
       run: |
         xcrun llvm-cov export -format="lcov" \
           .build/debug/SwiftQCPackageTests.xctest/Contents/MacOS/SwiftQCPackageTests \
-          -instr-profile .build/debug/codecov/default.profdata > coverage.lcov
+          -instr-profile .build/debug/codecov/default.profdata > coverage.lcov 2>/dev/null || true
 
     - name: Upload coverage to Codecov (macOS only)
       if: runner.os == 'macOS' && matrix.swift-version == '6.0'
