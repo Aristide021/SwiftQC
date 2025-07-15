@@ -30,7 +30,7 @@ The SwiftQC CLI requires XCTest libraries to be available at runtime because Swi
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/SwiftQC.git
+git clone https://github.com/Aristide021/SwiftQC.git
 cd SwiftQC
 
 # Build the CLI

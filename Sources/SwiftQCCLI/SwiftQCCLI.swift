@@ -528,7 +528,7 @@ extension SwiftQCCLI {
                 try await runParallelCommands(parallelCommands)
             }
             
-            For more examples, see: https://github.com/your-org/SwiftQC
+            For more examples, see: https://github.com/Aristide021/SwiftQC
             """)
         }
     }

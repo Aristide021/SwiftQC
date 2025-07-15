@@ -9,7 +9,7 @@ Add SwiftQC to your project's `Package.swift` dependencies:
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/your-repo/SwiftQC.git", .upToNextMajor(from: "1.0.0")) // Replace with actual URL
+    .package(url: "https://github.com/Aristide021/SwiftQC.git", .upToNextMajor(from: "1.0.0")) // Replace with actual URL
 ]
 ```
 

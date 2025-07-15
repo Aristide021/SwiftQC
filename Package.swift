@@ -25,6 +25,7 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
     // Ensure your swift-testing version is compatible with your Swift tools version
     .package(url: "https://github.com/apple/swift-testing.git", from: "0.7.0"), // Or latest compatible
+    .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
   ],
   targets: [
     .target(

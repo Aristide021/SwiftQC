@@ -9,13 +9,13 @@ Add SwiftQC to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/sheldon-aristide/SwiftQC.git", from: "1.0.0")
+    .package(url: "https://github.com/Aristide021/SwiftQC.git", from: "1.0.0")
 ]
 ```
 
 Or add it via Xcode:
 1. File → Add Package Dependencies
-2. Enter: `https://github.com/sheldon-aristide/SwiftQC.git`
+2. Enter: `https://github.com/Aristide021/SwiftQC.git`
 3. Select version `1.0.0` or later
 
 ## 🔧 CLI Tool Installation
@@ -26,7 +26,7 @@ Or add it via Xcode:
 
 ```bash
 # Clone and enter directory
-git clone https://github.com/sheldon-aristide/SwiftQC.git
+git clone https://github.com/Aristide021/SwiftQC.git
 cd SwiftQC
 
 # Run directly (from project directory) - requires Xcode
@@ -44,7 +44,7 @@ swift run SwiftQCCLI interactive
 sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
 # Clone the repository
-git clone https://github.com/sheldon-aristide/SwiftQC.git
+git clone https://github.com/Aristide021/SwiftQC.git
 cd SwiftQC
 
 # Build the CLI in release mode
@@ -188,10 +188,10 @@ swift package reset
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/sheldon-aristide/SwiftQC/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/sheldon-aristide/SwiftQC/discussions)
+- **Issues**: [GitHub Issues](https://github.com/Aristide021/SwiftQC/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Aristide021/SwiftQC/discussions)
 - **Documentation**: [Docs folder](Docs/)
 
 ---
 
-**Note**: Replace `sheldon-aristide/SwiftQC` with your actual GitHub username/repository path when publishing.
+**Note**: Replace `Aristide021/SwiftQC` with your actual GitHub username/repository path when publishing.

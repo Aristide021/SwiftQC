@@ -39,7 +39,7 @@ Integrate SwiftQC into your project using Swift Package Manager.
     ```swift
     // Package.swift
     dependencies: [
-        .package(url: "https://github.com/your-username/SwiftQC.git", .upToNextMajor(from: "1.0.0")) // TODO: Update with your actual repository URL
+        .package(url: "https://github.com/Aristide021/SwiftQC.git", .upToNextMajor(from: "1.0.0")) // TODO: Update with your actual repository URL
     ],
     ```
 

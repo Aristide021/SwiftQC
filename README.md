@@ -18,7 +18,7 @@ Add SwiftQC to your project:
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/sheldon-aristide/SwiftQC.git", from: "1.0.0"),
+.package(url: "https://github.com/Aristide021/SwiftQC.git", from: "1.0.0"),
 ```
 
 Or in Xcode: **File → Add Packages…** and enter the repository URL.
@@ -29,7 +29,7 @@ Or in Xcode: **File → Add Packages…** and enter the repository URL.
 
 ```bash
 # Clone and run locally (recommended for now)
-git clone https://github.com/sheldon-aristide/SwiftQC.git
+git clone https://github.com/Aristide021/SwiftQC.git
 cd SwiftQC
 swift run SwiftQCCLI --help
 swift run SwiftQCCLI run --count 100
