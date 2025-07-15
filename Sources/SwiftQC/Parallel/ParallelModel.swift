@@ -1,7 +1,7 @@
 import Gen
 
 // IO struct should be public if used across modules, and A should be Sendable if IO instances are passed around.
-public struct IO<A: Sendable> { // Made A Sendable here
+public struct IOMonad<A: Sendable> { // Made A Sendable here
     public let run: @Sendable () async throws -> A // run is async and Sendable
     public init(_ run: @escaping @Sendable () async throws -> A) { // init takes an async and Sendable closure
         self.run = run
@@ -36,13 +36,13 @@ public protocol ParallelModel: StateModel where State: Comparable {
     /// - Returns: An array of "smaller" symbolic commands.
     static func shrinkParallelCommand(_ states: [State], _ cmd: CommandVar) -> [CommandVar]
 
-    /// Converts a `CommandMonad` (typically an asynchronous operation) into an `IO` action
+    /// Converts a `CommandMonad` (typically an asynchronous operation) into an `IOMonad` action
     /// (typically a synchronous operation or one suited for specific concurrent executors).
     /// This is used by the parallel test runner to manage execution of commands.
     ///
     /// - Parameter action: The `CommandMonad` to convert.
-    /// - Returns: An `IO` action.
-    static func runCommandMonad<A: Sendable>(_ action: @escaping CommandMonad<A>) -> IO<A> // ADDED @escaping here
+    /// - Returns: An `IOMonad` action.
+    static func runCommandMonad<A: Sendable>(_ action: @escaping CommandMonad<A>) -> IOMonad<A> // ADDED @escaping here
 }
 
 // Default implementation for shrinkParallelCommand to make it optional.

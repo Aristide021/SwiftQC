@@ -13,7 +13,7 @@ public struct UnicodeScalarShrinker: Shrinker {
     // Construct simpleScalars safely, ensuring they are valid Unicode.Scalars
     private let simpleScalars: [Unicode.Scalar] = [
         "a", "A", "0", " ", "\n", "\t",
-        "b", "c", "1", "2", ".", ",",
+        "b", "c", "1", "2", ".", ","
     ].compactMap { charString in Unicode.Scalar(charString) } // Use the failable String initializer
 
     public func shrink(_ value: Unicode.Scalar) -> [Unicode.Scalar] {

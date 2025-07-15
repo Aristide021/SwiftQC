@@ -171,7 +171,7 @@ private func generateAndExecuteSequence<Model: StateModel, SUT_Runner>(
         let fakeRunResult = Model.runFake(symbolicCommand, inState: currentModelState)
 
         switch fakeRunResult {
-        case .left(_):
+        case .left:
             preconditionFailuresInSequence += 1
             continue commandLoop
         
@@ -304,7 +304,7 @@ private func shrinkStatefulSequence<Model: StateModel, SUT_Runner>(
             )
             
             switch candidateExecutionResult {
-            case .success(_):
+            case .success:
                 continue candidateLoop
             case .failure(let sequenceFailure):
                 print("  Shrinking '\(propertyName)': found smaller failing sequence (length \(sequenceFailure.sequence.steps.count)) with error: \(sequenceFailure.underlyingError.localizedDescription)")

@@ -25,15 +25,11 @@ public struct RangeShrinker<BoundGeneric>: Shrinker
         let (lower, upper) = (value.lowerBound, value.upperBound)
 
         // 1. Shrink individual bounds
-        for shrunkLower in boundShrinker.shrink(lower) {
-            if shrunkLower < upper {
-                shrinks.append(shrunkLower..<upper)
-            }
+        for shrunkLower in boundShrinker.shrink(lower) where shrunkLower < upper {
+            shrinks.append(shrunkLower..<upper)
         }
-        for shrunkUpper in boundShrinker.shrink(upper) {
-            if lower < shrunkUpper {
-                shrinks.append(lower..<shrunkUpper)
-            }
+        for shrunkUpper in boundShrinker.shrink(upper) where lower < shrunkUpper {
+            shrinks.append(lower..<shrunkUpper)
         }
         
         // 2. Shrink both bounds if possible

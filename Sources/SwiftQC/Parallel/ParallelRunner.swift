@@ -68,7 +68,7 @@ private actor Orchestrator<Model: ParallelModel> where
                 self.commandLog.append((opId: opIdCounter, symbolic: symbolicCmd, virtualThreadId: virtualThreadId))
                 modelStates[virtualThreadId] = nextModelState
                 opIdCounter += 1
-            case .left(_):
+            case .left:
                 print("  Planning: Precondition failed for symbolic \(symbolicCmd) on vThread \(virtualThreadId). Retrying.")
                 continue
             }
@@ -370,22 +370,21 @@ private func executeParallelRunInternal<Model: ParallelModel, SUT_Runner>(
 
     // Pass 2: If no direct SUT runtime error, check for divergence or critical nil responses
     if overallErrorInternal == nil {
-        for event in eventHistory {
+        for event in eventHistory where event.sutError == nil {
             // Only evaluate events that didn't have a SUT error reported (as that would have been caught above)
-            if event.sutError == nil {
-                if let actualResp = event.actualResponse {
-                    let sutResolverForEquivalence = await sutRefManager.getResolver()
-                    if !Model.areResponsesEquivalent(symbolicResponse: event.modelResponse, concreteResponse: actualResp, resolver: sutResolverForEquivalence) {
-                        overallErrorInternal = ParallelRunnerError(message: "Parallel Divergence: OpId \(event.opId), Cmd \(event.concreteCommand), ModelResp \(event.modelResponse), SUTResp \(actualResp)")
-                        print("[executeParallelRunInternal] Detected Divergence: \(overallErrorInternal!)")
-                        break // Found the first divergence
-                    }
-                } else { // No SUT error, but actualResponse is nil
-                    overallErrorInternal = ParallelRunnerError(message: "Parallel Critical: Nil SUT response without error for OpId \(event.opId), Cmd \(event.concreteCommand)")
-                    print("[executeParallelRunInternal] Detected Critical Nil Response: \(overallErrorInternal!)")
-                    break // Found the first critical nil response
+            if let actualResp = event.actualResponse {
+                let sutResolverForEquivalence = await sutRefManager.getResolver()
+                if !Model.areResponsesEquivalent(symbolicResponse: event.modelResponse, concreteResponse: actualResp, resolver: sutResolverForEquivalence) {
+                    overallErrorInternal = ParallelRunnerError(message: "Parallel Divergence: OpId \(event.opId), Cmd \(event.concreteCommand), ModelResp \(event.modelResponse), SUTResp \(actualResp)")
+                    print("[executeParallelRunInternal] Detected Divergence: \(overallErrorInternal!)")
+                    break // Found the first divergence
                 }
+            } else { // No SUT error, but actualResponse is nil
+                overallErrorInternal = ParallelRunnerError(message: "Parallel Critical: Nil SUT response without error for OpId \(event.opId), Cmd \(event.concreteCommand)")
+                print("[executeParallelRunInternal] Detected Critical Nil Response: \(overallErrorInternal!)")
+                break // Found the first critical nil response
             }
+        }
         }
     }
     

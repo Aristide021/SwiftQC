@@ -84,7 +84,7 @@ extension SwiftQCCLI {
             case "verbose":
                 return VerboseReporter()
             case "console":
-                fallthrough
+                return ConsoleReporter()
             default:
                 return ConsoleReporter()
             }
