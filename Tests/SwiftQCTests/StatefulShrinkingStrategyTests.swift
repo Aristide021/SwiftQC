@@ -128,7 +128,8 @@ final class StatefulShrinkingStrategyTests: XCTestCase {
         // by checking that no candidate sequence of length 3 was formed by ONLY changing cmdA or noShrinkCmd.
         let originalCmds = sequence.steps.map { $0.symbolicCommand }
         var foundUnexpectedShrink = false
-        for candidate in symbolicCandidates where candidate.count == originalCmds.count {
+        for candidate in symbolicCandidates {
+            guard candidate.count == originalCmds.count else { continue }
             var diffCount = 0
             var modifiedOriginal = false
             for i in 0..<originalCmds.count {

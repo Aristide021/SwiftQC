@@ -46,7 +46,7 @@ public struct URLShrinker: Shrinker { // ... (Keep your existing URLShrinker log
         }
         if let queryItems = components.queryItems, !queryItems.isEmpty {
             var nc1 = components; nc1.queryItems = nil; if let nu = nc1.url, nu != url { shrinks.append(nu) }
-            if queryItems.count > 0 { var nc2 = components; nc2.queryItems = Array(queryItems.dropLast()); if nc2.queryItems?.isEmpty ?? false {nc2.queryItems=nil}; if let nu = nc2.url, nu != url { shrinks.append(nu) }}
+            if !queryItems.isEmpty { var nc2 = components; nc2.queryItems = Array(queryItems.dropLast()); if nc2.queryItems?.isEmpty ?? false {nc2.queryItems=nil}; if let nu = nc2.url, nu != url { shrinks.append(nu) }}
         }
         if components.fragment != nil { var nc = components; nc.fragment = nil; if let nu = nc.url, nu != url { shrinks.append(nu) }}
         return Array(Set(shrinks.filter { $0 != url })).sorted(by: { $0.absoluteString.count < $1.absoluteString.count })

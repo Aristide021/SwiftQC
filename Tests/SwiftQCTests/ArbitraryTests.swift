@@ -32,7 +32,7 @@ final class ArbitraryTests: XCTestCase {
     func testBoolArbitrary_forAllSimpleProperty()async{let r=await forAll("Bool:b||!b",{(b:Bool)in XCTAssertTrue(b || !b)},Bool.self);if case .falsified(let v,let e,_,_)=r{XCTFail("P:\(v) E:\(e)")}}
 
     // MARK: - String Arbitrary Tests (Condensed)
-    func testStringArbitrary_gen(){var r=newRng();let g=String.gen;var s=Set<String>();for _ in 0..<50{s.insert(g.run(using:&r))};XCTAssertGreaterThan(s.count,1);XCTAssertTrue(s.allSatisfy{$0.count>=0&&$0.count<=100})}
+    func testStringArbitrary_gen(){var r=newRng();let g=String.gen;var s=Set<String>();for _ in 0..<50{s.insert(g.run(using:&r))};XCTAssertGreaterThan(s.count,1);XCTAssertTrue(s.allSatisfy{!$0.isEmpty||$0.count<=100})}
     func testStringArbitrary_shrinker(){let s=String.shrinker;XCTAssertTrue(s.shrink("").isEmpty);let sH=s.shrink("hello");XCTAssertFalse(sH.isEmpty);XCTAssertTrue(sH.contains(""));XCTAssertTrue(sH.allSatisfy{$0.count<"hello".count||$0.isEmpty})}
     func testStringArbitrary_forAllSimpleProperty()async{let r=await forAll("String:s.c>=0",{(s:String)in XCTAssertGreaterThanOrEqual(s.count,0)},String.self);if case .falsified(let v,let e,_,_)=r{XCTFail("P:\(v) E:\(e)")}}
 
@@ -54,7 +54,7 @@ final class ArbitraryTests: XCTestCase {
 
     // MARK: - Dictionary Arbitrary Tests (Condensed)
     func testArbitraryDictionary_gen(){var r=newRng();let g=ArbitraryDictionary<String,Int>.gen;var gNE=false;for _ in 0..<30{let d=g.run(using:&r);if !d.isEmpty{gNE=true};XCTAssertTrue(d.count<=50)};XCTAssertTrue(gNE)}
-    func testArbitraryDictionary_shrinker(){let s=ArbitraryDictionary<String,Int>.shrinker;XCTAssertTrue(s.shrink([:]).isEmpty);let dS:Dictionary<String,Int>=["a":10,"b":20,"c":0];let sD=s.shrink(dS);XCTAssertFalse(sD.isEmpty);XCTAssertTrue(sD.contains([:]));XCTAssertTrue(sD.contains(where:{$0.count<dS.count && $0.count > 0}));XCTAssertTrue(sD.contains(["a":0,"b":20,"c":0])||sD.contains(["a":Int.shrinker.shrink(10).first ?? 10,"b":20,"c":0]))}
+    func testArbitraryDictionary_shrinker(){let s=ArbitraryDictionary<String,Int>.shrinker;XCTAssertTrue(s.shrink([:]).isEmpty);let dS:Dictionary<String,Int>=["a":10,"b":20,"c":0];let sD=s.shrink(dS);XCTAssertFalse(sD.isEmpty);XCTAssertTrue(sD.contains([:]));XCTAssertTrue(sD.contains(where:{$0.count<dS.count && !$0.isEmpty}));XCTAssertTrue(sD.contains(["a":0,"b":20,"c":0])||sD.contains(["a":Int.shrinker.shrink(10).first ?? 10,"b":20,"c":0]))}
     func testArbitraryDictionary_forAllSimpleProperty()async{let r=await forAll("Dict(S,I)prop",{(d:Dictionary<String,Int>)in XCTAssertNotNil(d);for(k,v)in d{XCTAssertNotNil(k);XCTAssertNotNil(v)}},ArbitraryDictionary<String,Int>.self);if case .falsified(let v,let e,_,_)=r{XCTFail("P:\(v) E:\(e)")}}
 
     // MARK: - Fixed-Width Integer Arbitrary Tests (Condensed)

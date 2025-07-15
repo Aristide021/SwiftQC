@@ -77,7 +77,7 @@ jobs:
 
     - name: Build Documentation
       run: |
-        swift package --allow-writing-to-directory docs \
+        swift package plugin --allow-writing-to-directory docs \
           generate-documentation --target SwiftQC \
           --disable-indexing \
           --transform-for-static-hosting \
