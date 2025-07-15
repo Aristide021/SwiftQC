@@ -193,4 +193,4 @@ When contributing to the CLI:
 
 ## License
 
-Same as SwiftQC main library - MIT License. 
+Same as SwiftQC main library - Apache License 2.0. 
