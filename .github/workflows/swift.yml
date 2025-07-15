@@ -12,14 +12,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-22.04]
+        # Use macos-14 for stable Swift 6.0, ubuntu for Linux compatibility
+        os: [macos-14, ubuntu-22.04]
         swift-version: ['6.0']
         include:
-          # Add older Swift versions for compatibility testing (may fail)
+          # Test with latest Swift on macOS 15+ (should be 6.1+)
           - os: macos-latest
-            swift-version: '5.10'
-          - os: ubuntu-22.04  
-            swift-version: '5.10'
+            swift-version: '6.1'
 
     steps:
     - name: Checkout
@@ -30,14 +29,19 @@ jobs:
       uses: swift-actions/setup-swift@v1
       with:
         swift-version: ${{ matrix.swift-version }}
-      continue-on-error: true
 
     - name: Setup Swift (macOS)
-      if: runner.os == 'macOS'
+      if: runner.os == 'macOS' && matrix.swift-version != '6.1'
       uses: swift-actions/setup-swift@v1
       with:
         swift-version: ${{ matrix.swift-version }}
-      continue-on-error: true
+
+    - name: Use System Swift (macOS 6.1)
+      if: runner.os == 'macOS' && matrix.swift-version == '6.1'
+      run: |
+        echo "Using system Swift on macOS latest (should be 6.1+)"
+        which swift
+        swift --version
 
     - name: Check Swift Installation
       run: swift --version
@@ -76,7 +80,7 @@ jobs:
 
   documentation:
     name: Documentation Build
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -85,7 +89,6 @@ jobs:
       uses: swift-actions/setup-swift@v1
       with:
         swift-version: '6.0'
-      continue-on-error: true
 
     - name: Check Swift Installation
       run: swift --version
@@ -109,7 +112,7 @@ jobs:
     name: Deploy Documentation
     if: github.ref == 'refs/heads/main'
     needs: documentation
-    runs-on: macos-latest
+    runs-on: macos-14
     permissions:
       pages: write
       id-token: write
