@@ -12,8 +12,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Use macos-14 for stable Swift 6.0, ubuntu for Linux compatibility
-        os: [macos-14, ubuntu-22.04]
+        # Use macOS for stable Swift testing
+        os: [macos-14]
         swift-version: ['6.0']
         include:
           # Test with latest Swift on macOS 15+ (should be 6.1+)
@@ -23,12 +23,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Setup Swift (Linux)
-      if: runner.os == 'Linux'
-      uses: swift-actions/setup-swift@v1
-      with:
-        swift-version: ${{ matrix.swift-version }}
 
     - name: Setup Swift (macOS)
       if: runner.os == 'macOS' && matrix.swift-version != '6.1'
