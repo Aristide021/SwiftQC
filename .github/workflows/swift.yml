@@ -12,19 +12,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # Use macOS latest which has Swift 6.1+ by default
+        # Test on macOS with Swift 6.0 and 6.1 using SwiftyLab/setup-swift
         os: [macos-latest]
-        swift-version: ['6.1']
+        swift-version: ['6.0', '6.1']
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Use System Swift
-      run: |
-        echo "Using system Swift on macOS latest"
-        which swift
-        swift --version
+    - name: Setup Swift
+      uses: SwiftyLab/setup-swift@latest
+      with:
+        swift-version: ${{ matrix.swift-version }}
 
     - name: Check Swift Installation
       run: swift --version
@@ -68,6 +67,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Setup Swift  
+      uses: SwiftyLab/setup-swift@latest
+      with:
+        swift-version: '6.0'
+        
     - name: Check Swift Installation
       run: swift --version
 
