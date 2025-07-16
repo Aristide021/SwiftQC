@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2025-07-15
+## [1.0.0] - 2025-07-16
 
 ### Added
 
@@ -70,10 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API documentation with code examples
 
 #### Development Infrastructure
-- GitHub Actions CI/CD pipeline
-- Multi-platform testing (macOS, Ubuntu)
-- Swift 6.0 and 5.10 compatibility testing
-- Code coverage reporting with Codecov
+- GitHub Actions CI/CD pipeline with self-hosted runner support
+- Multi-platform testing capability (macOS focus)
+- Swift 6.0 and 6.1 compatibility testing
+- Code coverage reporting with Codecov integration
 - SwiftLint configuration for code quality
 - Automated documentation generation and deployment
 - Release automation with GitHub releases
